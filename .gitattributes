@@ -1,0 +1,19 @@
+# Гарантираме CRLF за Windows-specific файлове независимо от core.autocrlf настройката.
+# Без CRLF в .bat, cmd.exe не може да resolve-ва goto labels → infinite loops.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# UTF-8 текстови файлове — git ги нормализира до LF в repo, CRLF на Windows checkout
+*.py text
+*.md text
+*.json text
+*.yml text
+*.yaml text
+*.txt text
+*.html text
+
+# Binary файлове — никога не нормализирай
+*.png binary
+*.jpg binary
+*.pdf binary
+*.xlsx binary
