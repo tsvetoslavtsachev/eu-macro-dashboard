@@ -50,16 +50,34 @@ def cmd_status(args) -> int:
     from sources.ecb_adapter import EcbAdapter
     from sources.eurostat_adapter import EurostatAdapter
     from export.data_status import generate_status_report
-    from catalog.series import SERIES_CATALOG
+    from catalog.series import SERIES_CATALOG, series_by_source
 
-    print("📡 Status: catalog has", len(SERIES_CATALOG), "series")
+    print(f"📊 Catalog: {len(SERIES_CATALOG)} series")
+
     if not SERIES_CATALOG:
-        print("   ⚠ Catalog is empty (Phase 1 will populate it).")
+        print("   ⚠ Catalog is empty.")
         return 0
 
-    ecb = EcbAdapter()
-    es = EurostatAdapter()
-    generate_status_report(SERIES_CATALOG, ecb, es)
+    adapters = {
+        "ecb": EcbAdapter(),
+        "eurostat": EurostatAdapter(),
+    }
+
+    if args.refresh:
+        print("\n🔄 --refresh: fetching all catalog series...")
+        for source_name, adapter in adapters.items():
+            specs = [
+                {"key": s["_key"], "source_id": s["id"], "release_schedule": s["release_schedule"]}
+                for s in series_by_source(source_name)
+            ]
+            if specs:
+                print(f"   {source_name}: fetching {len(specs)} series...")
+                adapter.fetch_many(specs, force=True)
+                fails = adapter.last_fetch_failures()
+                if fails:
+                    print(f"   {source_name}: {len(fails)} failed: {', '.join(fails)}")
+
+    generate_status_report(SERIES_CATALOG, adapters)
     return 0
 
 
