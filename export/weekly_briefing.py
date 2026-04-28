@@ -167,6 +167,111 @@ def _render_module_block(result: dict) -> str:
 """
 
 
+def _render_analogs(bundle: Any) -> str:
+    """Historical Analog секция (Phase 4). bundle = AnalogBundle или None."""
+    if bundle is None:
+        return ""
+
+    current = bundle.current_state
+    analogs = bundle.analogs
+
+    if not analogs:
+        return f"""
+<section class="analogs">
+  <h2>Исторически аналози</h2>
+  <p class="empty">Недостатъчно данни за анализ (история {len(bundle.history_df)} наблюдения).</p>
+</section>
+"""
+
+    # Header със current state summary
+    raw = current.raw
+    state_lines = []
+    from analysis.macro_vector import DIM_LABELS_BG, DIM_UNITS
+    for dim, val in raw.items():
+        label = DIM_LABELS_BG.get(dim, dim)
+        unit = DIM_UNITS.get(dim, "")
+        state_lines.append(f"<li><strong>{label}:</strong> {val:.2f}{unit}</li>")
+
+    # Analog table
+    analog_rows = []
+    for a in analogs:
+        sim_strength = "силен" if a.similarity > 0.85 else "добър" if a.similarity > 0.7 else "слаб"
+        analog_rows.append(f"""
+        <tr>
+          <td class="rank">#{a.rank}</td>
+          <td class="date">{a.date.strftime('%Y-%m')}</td>
+          <td class="similarity">{a.similarity:.2f} ({sim_strength})</td>
+          <td class="episode">{a.episode_label or '—'}</td>
+        </tr>
+        """)
+
+    # Forward outcomes — група по horizon
+    forward = bundle.forward
+    horizon_blocks = []
+    for h in forward.horizons:
+        rows = []
+        for dim in forward.dims:
+            agg = next(
+                (a for a in forward.aggregates if a.dim == dim and a.horizon_months == h),
+                None,
+            )
+            if agg is None or agg.median_value is None:
+                continue
+            label = DIM_LABELS_BG.get(dim, dim)
+            unit = DIM_UNITS.get(dim, "")
+            delta_str = f"{agg.median_delta:+.2f}{unit}" if agg.median_delta is not None else "—"
+            rows.append(f"""
+            <tr>
+              <td>{label}</td>
+              <td class="num">{agg.median_value:.2f}{unit}</td>
+              <td class="num delta">{delta_str}</td>
+              <td class="range">[{agg.min_value:.2f}, {agg.max_value:.2f}]</td>
+              <td class="n-cell">{agg.n}</td>
+            </tr>
+            """)
+        if rows:
+            horizon_blocks.append(f"""
+            <h4>След {h} месеца</h4>
+            <table class="forward-table">
+              <thead><tr>
+                <th>Dimension</th>
+                <th>Median value</th>
+                <th>Median Δ</th>
+                <th>Range</th>
+                <th>N</th>
+              </tr></thead>
+              <tbody>{''.join(rows)}</tbody>
+            </table>
+            """)
+
+    return f"""
+<section class="analogs">
+  <h2>Исторически аналози</h2>
+  <p class="meta">As-of: {current.as_of.strftime('%Y-%m')} ·
+     Cosine similarity срещу {len(bundle.history_df)}-месечна EA история (от 1999)</p>
+
+  <h3>Текущ макро state (7 dimensions)</h3>
+  <ul class="state-list">{''.join(state_lines)}</ul>
+
+  <h3>Топ {len(analogs)} най-подобни исторически периода</h3>
+  <table class="analog-table">
+    <thead><tr>
+      <th>Rank</th>
+      <th>Period</th>
+      <th>Similarity</th>
+      <th>Episode</th>
+    </tr></thead>
+    <tbody>{''.join(analog_rows)}</tbody>
+  </table>
+
+  <h3>Forward outcomes (медиана през analog-ите)</h3>
+  <p class="meta">Какво се случи в избраните периоди след аналог-датата.
+     Range = [min, max] през analogs; N = брой analogs с налични данни.</p>
+  {''.join(horizon_blocks) if horizon_blocks else '<p class="empty">Няма forward данни (analog-ите са твърде близо до края на историята).</p>'}
+</section>
+"""
+
+
 def _render_anomalies(snapshot: dict[str, pd.Series], top_n: int = 10) -> str:
     """Top anomalies — серии с |z|>2 от analysis/anomaly.py."""
     from analysis.anomaly import compute_anomalies
@@ -281,6 +386,21 @@ td.ind-value, td.ind-yoy, td.ind-pct, td.ind-score { font-variant-numeric: tabul
 td.ind-date { color: #666; font-size: 12px; }
 sub { font-size: 0.7em; color: #777; }
 
+.analogs h3 { margin-top: 24px; }
+.analogs h4 { margin: 16px 0 8px 0; font-size: 13px; color: #555;
+              text-transform: uppercase; letter-spacing: 0.4px; }
+.analogs .state-list { list-style: none; padding: 0;
+                       display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.analogs .state-list li { background: #f5f6f8; padding: 8px 12px;
+                          border-radius: 6px; font-size: 13px; }
+.analog-table td.rank { font-weight: 700; color: #0066cc; }
+.analog-table td.similarity { font-variant-numeric: tabular-nums; font-weight: 600; }
+.analog-table td.episode { font-style: italic; color: #555; }
+.forward-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.forward-table td.delta { font-weight: 600; }
+.forward-table td.range { color: #777; font-size: 12px; font-variant-numeric: tabular-nums; }
+.forward-table td.n-cell { text-align: center; color: #888; }
+
 @media print {
   body { background: white; padding: 0; }
   section, .briefing-header { box-shadow: none; border: 1px solid #ddd; }
@@ -339,6 +459,9 @@ def generate_weekly_briefing(
 
     for r in modules_results:
         body_parts.append(_render_module_block(r))
+
+    if analog_bundle is not None:
+        body_parts.append(_render_analogs(analog_bundle))
 
     body_parts.append(_render_anomalies(snapshot, top_n=top_anomalies_n))
     body_parts.append(_render_footer(today, len(snapshot), len(modules_results)))

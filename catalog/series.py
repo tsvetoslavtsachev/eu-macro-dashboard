@@ -213,6 +213,23 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "EA-aggregate 10Y yield (ECB compiled). Risk-free benchmark "
                           "за европейските пазари.",
     },
+    "EA_BUND_2Y": {
+        "source": "ecb",
+        "id": "FM/M.U2.EUR.4F.BB.U2_2Y.YLD",
+        "region": "EA",
+        "name_bg": "Bund 2Y benchmark yield",
+        "name_en": "EA 2Y Government Bond Yield",
+        "lens": ["credit"],
+        "peer_group": "sovereign_yields",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1970-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "monthly",
+        "revision_prone": False,
+        "narrative_hint": "EA-aggregate 2Y yield. Curve slope (10Y-2Y) проксира "
+                          "policy expectations и recession risk.",
+    },
     "IT_10Y": {
         "source": "ecb",
         "id": "IRS/M.IT.L.L40.CI.0000.EUR.N.Z",

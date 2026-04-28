@@ -62,32 +62,26 @@ import pandas as pd
 # Известни макро-епизоди; label-ът излиза в briefing-а до датата
 # на analog-а. Краищата са inclusive. Ако един месец попада в
 # няколко епизода (рядко) — първата в списъка печели.
+# Eurozone-specific исторически епизоди (1999+ = EMU era).
+# Краищата са inclusive. Ако месец попада в няколко епизода, първата печели.
 HISTORICAL_EPISODES: list[dict] = [
-    {"label": "Oil shock I / Stagflation",      "start": "1973-11-01", "end": "1975-03-01"},
-    {"label": "Oil shock II / Pre-Volcker",     "start": "1978-07-01", "end": "1979-10-01"},
-    {"label": "Volcker disinflation",           "start": "1979-10-01", "end": "1982-11-01"},
-    {"label": "Late-80s expansion",             "start": "1983-01-01", "end": "1989-06-01"},
-    {"label": "S&L crisis / Early-90s",         "start": "1989-07-01", "end": "1991-06-01"},
-    {"label": "90s expansion (pre-Asia)",       "start": "1991-07-01", "end": "1997-06-01"},
-    {"label": "Asia crisis / LTCM",             "start": "1997-07-01", "end": "1998-12-01"},
-    {"label": "Late 90s boom",                  "start": "1999-01-01", "end": "2000-03-01"},
-    {"label": "Dotcom bust",                    "start": "2000-04-01", "end": "2001-11-01"},
-    {"label": "Early 2000s reflation",          "start": "2002-01-01" , "end": "2006-12-01"},
-    {"label": "Pre-GFC / Credit crunch",        "start": "2007-01-01", "end": "2007-11-01"},
-    {"label": "GFC / Great Recession",          "start": "2007-12-01", "end": "2009-06-01"},
-    {"label": "Post-GFC recovery",              "start": "2009-07-01", "end": "2011-07-01"},
-    {"label": "EU sovereign crisis",            "start": "2011-08-01", "end": "2012-09-01"},
-    {"label": "Taper tantrum era",              "start": "2013-05-01", "end": "2014-06-01"},
-    {"label": "China/Oil collapse",             "start": "2015-07-01", "end": "2016-06-01"},
-    {"label": "Trump reflation",                "start": "2016-11-01", "end": "2018-09-01"},
-    {"label": "Q4 2018 / End of hiking cycle",  "start": "2018-10-01", "end": "2019-06-01"},
-    {"label": "Late-cycle 2019",                "start": "2019-07-01", "end": "2020-01-01"},
-    {"label": "COVID shock",                    "start": "2020-02-01", "end": "2020-06-01"},
-    {"label": "COVID reopening",                "start": "2020-07-01", "end": "2021-12-01"},
-    {"label": "Inflation shock / Fed hiking",   "start": "2022-01-01", "end": "2023-07-01"},
-    {"label": "Disinflation / Soft landing",    "start": "2023-08-01", "end": "2024-09-01"},
-    # 2024-10+ изрично не е labeled; остава current regime (който
-    # exclude_last_months bars ще отрежат)
+    {"label": "Late 90s boom (pre-EMU)",         "start": "1999-01-01", "end": "2000-03-01"},
+    {"label": "Dotcom bust",                     "start": "2000-04-01", "end": "2001-11-01"},
+    {"label": "Early 2000s reflation",           "start": "2002-01-01", "end": "2005-08-01"},
+    {"label": "ECB rate hike cycle (2005-08)",   "start": "2005-09-01", "end": "2007-11-01"},
+    {"label": "GFC / Great Recession",           "start": "2007-12-01", "end": "2009-06-01"},
+    {"label": "Post-GFC recovery",               "start": "2009-07-01", "end": "2010-04-01"},
+    {"label": "EU sovereign debt crisis",        "start": "2010-05-01", "end": "2012-07-01"},
+    {"label": "Draghi 'whatever it takes'",      "start": "2012-08-01", "end": "2013-12-01"},
+    {"label": "ECB QE / negative rates",         "start": "2014-01-01", "end": "2016-06-01"},
+    {"label": "Brexit shock + ECB stim",         "start": "2016-07-01", "end": "2017-06-01"},
+    {"label": "Late expansion / taper talk",     "start": "2017-07-01", "end": "2019-06-01"},
+    {"label": "Late-cycle 2019",                 "start": "2019-07-01", "end": "2020-01-01"},
+    {"label": "COVID shock",                     "start": "2020-02-01", "end": "2020-06-01"},
+    {"label": "COVID + PEPP",                    "start": "2020-07-01", "end": "2021-12-01"},
+    {"label": "Energy shock + ECB hiking",       "start": "2022-01-01", "end": "2023-09-01"},
+    {"label": "Disinflation",                    "start": "2023-10-01", "end": "2025-06-01"},
+    # 2025-07+ остава unlabeled (current regime); exclude_last_months ги отрязва
 ]
 
 

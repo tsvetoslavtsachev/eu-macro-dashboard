@@ -1,52 +1,39 @@
 """
 analysis/macro_vector.py
 ========================
-8-dimensional macro state vector за historical analog engine (Phase 4).
+7-dimensional macro state vector за Eurozone historical analog engine.
 
-⚠ PHASE 4 TODO — US-SPECIFIC, ИЗИСКВА EA REWRITE
-================================================
-Този файл е копиран 1:1 от us-macro-dashboard. Съдържанието по-долу е
-US-калибрирано (FRED IDs, US dimensions като real_ffr/Sahm rule, splice
-дати 1996/2003 за HY и breakeven). EA адаптацията се прави в Phase 4:
+Дименсии (7):
+  1. unrate              — EA_UNRATE level (%) [Eurostat]
+  2. core_hicp_yoy       — EA_HICP_CORE level (%) [вече YoY от Eurostat]
+  3. real_dfr            — ECB_DFR − EA_HICP_CORE (real policy rate, %)
+  4. yc_10y2y            — EA_BUND_10Y − EA_BUND_2Y (curve slope, pp)
+  5. sovereign_stress    — IT_10Y − DE_10Y (BTP-Bund spread, pp; EA proxy за HY OAS)
+  6. ip_yoy              — EA_IP YoY (%, computed)
+  7. sahm                — Sahm rule (3mma EA_UNRATE − min trailing 12m 3mma, pp)
 
-  - dim 3: real_ffr → real_dfr (DFR − HICP core YoY)
-  - dim 5: hy_oas → sovereign_stress (BTP-Bund 10Y spread)
-  - dim 7: breakeven (T10YIE) → ECB SPF inflation expectations
-  - episode labels → EA-specific (sovereign crisis 2010-12, Draghi 2012, etc.)
-  - history start: 1976 → 1999 (EMU era)
+Window: 1999-01-01 → сега (~26 години EMU история).
+Pre-1999 синтетика (GDP-weighted DM legacy currencies) умишлено пропусната —
+твърде шумна за meaningful analog match.
 
-Phase 0/1/2/3 НЕ извикват тези функции (analog engine е opt-in флаг
---with-analogs); файлът е inert докато Phase 4 не пренапише dimensions.
+Различия от US version:
+  - real_ffr → real_dfr (ECB Deposit Facility Rate)
+  - hy_oas → sovereign_stress (BTP-Bund proxy; iTraxx е платено)
+  - breakeven (T10YIE) → ПРОПУСНАТО (ECB SPF е quarterly с lag; Phase 4.5)
+  - 8 dims → 7 dims за v1
+  - Без proxy splicing — историята започва 1999
 
-Дименсии (8) — както са СЕГА (US):
-  1. unrate          — UNRATE level (%)
-  2. core_cpi_yoy    — CPILFESL YoY (%)
-  3. real_ffr        — DFF monthly avg − core CPI YoY (%)
-  4. yc_10y2y        — T10Y2Y level (bps as %); fallback = DGS10 − DGS2
-  5. hy_oas          — BAMLH0A0HYM2 level (%); fallback pre-1996 = BAA − DGS10, rescaled
-  6. ip_yoy          — INDPRO YoY (%)
-  7. breakeven       — T10YIE level (%); fallback pre-2003 = MICH, rescaled
-  8. sahm            — Sahm rule (3mma UNRATE − min trailing 12m 3mma) (pp)
+Запазен интерфейс (за analog_matcher.py / analog_pipeline.py):
+  STATE_VECTOR_DIMS, DIM_LABELS_BG, DIM_UNITS — public consts
+  MacroState — dataclass с as_array()
+  build_history_matrix, z_score_matrix, build_current_vector — public functions
 
-Window: 1976-01-01 → сега. Това покрива 1970s stagflation, Volcker, 80s
-disinflation, dotcom, GFC, 2020 COVID, 2022-23 inflation shock — всички
-regime-defining епизоди от последните 50 години.
-
-Proxy calibration (за hy_oas и breakeven):
-  На overlap периода (когато и двете серии имат данни) изчисляваме
-  mean/std и на двете, след това rescale-ваме proxy-a към scale-а на
-  primary: proxy_rescaled = proxy × (σ_primary/σ_proxy) + (μ_primary − μ_proxy·σ_primary/σ_proxy).
-  Резултатът: няма level discontinuity при splice date, z-score-ът
-  е коректен full-sample.
-
-  **Caveat:** Michigan 1Y survey и T10YIE 10Y breakeven мерят РАЗЛИЧНИ
-  неща (retail survey vs market pricing, 1Y vs 10Y horizon). Rescaling
-  изравнява средната и волатилността, но не ZMZ корелацията. Това е
-  документиран MVP компромис — за analog matching формата на движение
-  е по-важна от absolute level.
+⚠ PHASE 4 — текущо implementation. Phase 4.5+ ще добави:
+  - dim 7: inflation expectations (HICP swap или ECB SPF)
+  - 8-dim vector
+  - episode-specific tags (sovereign crisis, Draghi, COVID PEPP, etc.)
 """
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -54,330 +41,234 @@ import numpy as np
 import pandas as pd
 
 
-# ============================================================
-# STATE VECTOR DEFINITION
-# ============================================================
+# ─── Public constants ────────────────────────────────────────────
 
-ANALOG_WINDOW_START = "1976-01-01"
-
-# Всички FRED IDs, които analog engine ползва (включително proxy-тата)
-# Ключовете тук са вътрешните имена за fetch — не се пресичат с каталога
-# (вместо "UNRATE" ползваме "ANALOG_UNRATE" за да не пренапишем catalog cache
-# entry-та с евентуално различни transform-и в бъдеще).
-ANALOG_FETCH_SPEC: list[dict] = [
-    # Primary series
-    {"key": "ANALOG_UNRATE",       "fred_id": "UNRATE",        "schedule": "monthly"},
-    {"key": "ANALOG_CORE_CPI",     "fred_id": "CPILFESL",      "schedule": "monthly"},
-    {"key": "ANALOG_DFF",          "fred_id": "DFF",           "schedule": "weekly"},
-    {"key": "ANALOG_T10Y2Y",       "fred_id": "T10Y2Y",        "schedule": "weekly"},
-    {"key": "ANALOG_HY_OAS",       "fred_id": "BAMLH0A0HYM2",  "schedule": "weekly"},
-    {"key": "ANALOG_INDPRO",       "fred_id": "INDPRO",        "schedule": "monthly"},
-    {"key": "ANALOG_T10YIE",       "fred_id": "T10YIE",        "schedule": "weekly"},
-    # Proxies & curve building blocks
-    {"key": "ANALOG_DGS10",        "fred_id": "DGS10",         "schedule": "weekly"},
-    {"key": "ANALOG_DGS2",         "fred_id": "DGS2",          "schedule": "weekly"},
-    {"key": "ANALOG_BAA",          "fred_id": "BAA",           "schedule": "monthly"},
-    {"key": "ANALOG_MICH",         "fred_id": "MICH",          "schedule": "monthly"},
-]
-
-
-# Proxy splice dates — от кога primary series става достъпна
-HY_OAS_START = "1996-12-01"
-BREAKEVEN_START = "2003-01-01"
-
+ANALOG_WINDOW_START = "1999-01-01"  # EMU era
 
 STATE_VECTOR_DIMS: list[str] = [
     "unrate",
-    "core_cpi_yoy",
-    "real_ffr",
+    "core_hicp_yoy",
+    "real_dfr",
     "yc_10y2y",
-    "hy_oas",
+    "sovereign_stress",
     "ip_yoy",
-    "breakeven",
     "sahm",
 ]
 
-
 DIM_LABELS_BG: dict[str, str] = {
-    "unrate":       "Безработица",
-    "core_cpi_yoy": "Core CPI YoY",
-    "real_ffr":     "Реален Fed Funds",
-    "yc_10y2y":     "Крива 10Y-2Y",
-    "hy_oas":       "HY spread",
-    "ip_yoy":       "Industrial prod YoY",
-    "breakeven":    "Инфл. очаквания",
-    "sahm":         "Sahm rule",
+    "unrate":           "Безработица (EA)",
+    "core_hicp_yoy":    "HICP базова инфлация",
+    "real_dfr":         "Реален DFR",
+    "yc_10y2y":         "Крива 10Y-2Y",
+    "sovereign_stress": "Sovereign стрес (BTP-Bund)",
+    "ip_yoy":           "Промишлено производство YoY",
+    "sahm":             "Sahm правило",
 }
-
 
 DIM_UNITS: dict[str, str] = {
-    "unrate":       "%",
-    "core_cpi_yoy": "%",
-    "real_ffr":     "%",
-    "yc_10y2y":     "pp",
-    "hy_oas":       "%",
-    "ip_yoy":       "%",
-    "breakeven":    "%",
-    "sahm":         "pp",
+    "unrate":           "%",
+    "core_hicp_yoy":    "%",
+    "real_dfr":         "%",
+    "yc_10y2y":         "pp",
+    "sovereign_stress": "pp",
+    "ip_yoy":           "%",
+    "sahm":             "pp",
 }
 
 
-# ============================================================
-# DATA CLASSES
-# ============================================================
+# ─── MacroState dataclass ─────────────────────────────────────────
 
 @dataclass
 class MacroState:
-    """Macro state в даден момент: raw values + z-scored."""
+    """Snapshot на macro state в конкретна дата."""
     as_of: pd.Timestamp
-    raw: dict[str, float]       # {dim: raw value in native units}
-    z: dict[str, float]         # {dim: z-score full-sample}
+    raw: dict[str, float] = field(default_factory=dict)
+    z: dict[str, float] = field(default_factory=dict)
 
     def as_array(self) -> np.ndarray:
-        """Върне z-scored vector като np.ndarray в STATE_VECTOR_DIMS ред."""
-        return np.array([self.z[d] for d in STATE_VECTOR_DIMS], dtype=float)
+        """7-D z-score vector за cosine similarity."""
+        return np.array([self.z.get(d, np.nan) for d in STATE_VECTOR_DIMS])
+
+    def is_complete(self) -> bool:
+        """True ако всички dimensions са set (не NaN)."""
+        arr = self.as_array()
+        return not np.any(np.isnan(arr))
 
 
-# ============================================================
-# TRANSFORM PRIMITIVES
-# ============================================================
+# ─── Helper transforms ────────────────────────────────────────────
 
 def _to_month_end(s: pd.Series) -> pd.Series:
-    """Resample-ва серия на month-end (последно наблюдение в месеца).
-
-    DFF/T10Y2Y/DGS10 и т.н. са daily; ползваме последната налична стойност
-    на месеца (end-of-month convention). Monthly серии остават същите.
-    """
-    s = s.dropna()
+    """Resample към month-start (period start convention)."""
     if s.empty:
         return s
-    return s.resample("ME").last().dropna()
+    s = s.copy()
+    if not isinstance(s.index, pd.DatetimeIndex):
+        s.index = pd.to_datetime(s.index)
+    # Resample to monthly using mean (за daily/weekly серии)
+    return s.resample("MS").mean().dropna()
 
 
 def _yoy_pct(s: pd.Series) -> pd.Series:
-    """12-month % change на monthly серия."""
-    return (s / s.shift(12) - 1.0) * 100.0
+    """YoY процентна промяна (12-period diff на monthly серия)."""
+    if s.empty:
+        return s
+    return s.pct_change(periods=12).dropna() * 100
 
 
 def _compute_sahm_rule(unrate_monthly: pd.Series) -> pd.Series:
-    """Sahm Rule Recession Indicator (реална дефиниция):
+    """Sahm rule: 3-month moving average UNRATE минус trailing 12m min на 3mma.
 
-        SR = 3mma(UNRATE) − min(3mma(UNRATE)) за trailing 12 месеца
-
-    При SR ≥ 0.5 pp историческо recession signal.
+    Стойност > 0.5 historically signals recession.
     """
-    sma3 = unrate_monthly.rolling(3).mean()
-    trailing_min = sma3.rolling(12).min()
-    return sma3 - trailing_min
+    if len(unrate_monthly) < 15:
+        return pd.Series(dtype=float)
+    ma3 = unrate_monthly.rolling(window=3).mean()
+    trailing_min = ma3.rolling(window=12).min()
+    return (ma3 - trailing_min).dropna()
 
 
-# ============================================================
-# PROXY CALIBRATION
-# ============================================================
-
-def _calibrate_proxy(
-    primary: pd.Series,
-    proxy: pd.Series,
-    splice_date: str,
-) -> pd.Series:
-    """Съединява proxy (преди splice_date) и primary (от splice_date нататък),
-    rescaled върху overlap периода.
-
-    Резултат: единна серия без level discontinuity при splice_date.
-
-    Ако няма overlap (proxy свършва преди splice_date) — raise.
-    """
-    overlap_primary = primary.loc[splice_date:].dropna()
-    overlap_proxy = proxy.loc[splice_date:].dropna()
-
-    common_idx = overlap_primary.index.intersection(overlap_proxy.index)
-    if len(common_idx) < 12:
-        # fallback: без rescale, просто concat (по-малко прецизно)
-        proxy_rescaled = proxy.copy()
-    else:
-        p1 = overlap_primary.loc[common_idx]
-        p2 = overlap_proxy.loc[common_idx]
-        mu1, sig1 = p1.mean(), p1.std(ddof=0)
-        mu2, sig2 = p2.mean(), p2.std(ddof=0)
-        if sig2 == 0 or np.isnan(sig2):
-            proxy_rescaled = proxy.copy()
-        else:
-            scale = sig1 / sig2
-            shift = mu1 - mu2 * scale
-            proxy_rescaled = proxy * scale + shift
-
-    before = proxy_rescaled.loc[:splice_date]
-    # strict "<" на splice_date за да не получим дублиране
-    before = before.loc[before.index < pd.Timestamp(splice_date)]
-    after = primary.loc[splice_date:]
-    return pd.concat([before, after]).sort_index()
-
-
-# ============================================================
-# HISTORY MATRIX BUILDER
-# ============================================================
+# ─── History matrix builder ───────────────────────────────────────
 
 def build_history_matrix(
-    fetched: dict[str, pd.Series],
-    start: str = ANALOG_WINDOW_START,
+    snapshot: dict[str, pd.Series],
+    window_start: str = ANALOG_WINDOW_START,
 ) -> pd.DataFrame:
-    """Построява monthly history matrix 8-dim от raw FRED серии.
+    """От snapshot {series_key → pd.Series} построява monthly DataFrame
+    с колоните = STATE_VECTOR_DIMS.
 
-    Args:
-        fetched: dict {ANALOG_KEY: pd.Series} както върна adapter.fetch_many.
-                 Очаквани ключове: виж ANALOG_FETCH_SPEC.
-        start:   Начална дата за analog window (default 1976-01-01).
-
-    Returns:
-        DataFrame индексирана по month-end, колони = STATE_VECTOR_DIMS.
-        NaN редове са оставени — `.dropna()` от caller ако иска complete cases.
+    Връща пуст DataFrame ако ключовите серии липсват.
     """
-    # 1. Resample всичко на month-end
-    m = {k: _to_month_end(v) for k, v in fetched.items()}
+    required = {
+        "EA_UNRATE", "EA_HICP_CORE", "ECB_DFR",
+        "EA_BUND_10Y", "EA_BUND_2Y",
+        "IT_10Y", "DE_10Y",
+        "EA_IP",
+    }
+    missing = required - set(snapshot.keys())
+    if missing:
+        # Не raise-ваме — пускаме непълен matrix, downstream ще сигнализира
+        pass
 
-    # 2. Dim 1 — UNRATE level
-    unrate = m.get("ANALOG_UNRATE", pd.Series(dtype=float))
+    cols: dict[str, pd.Series] = {}
 
-    # 3. Dim 2 — core CPI YoY
-    core_cpi = m.get("ANALOG_CORE_CPI", pd.Series(dtype=float))
-    core_cpi_yoy = _yoy_pct(core_cpi) if not core_cpi.empty else pd.Series(dtype=float)
+    # Dim 1: unrate (level)
+    if "EA_UNRATE" in snapshot:
+        cols["unrate"] = _to_month_end(snapshot["EA_UNRATE"])
 
-    # 4. Dim 3 — real Fed Funds (DFF monthly avg − core CPI YoY)
-    dff = m.get("ANALOG_DFF", pd.Series(dtype=float))
-    real_ffr = (dff - core_cpi_yoy).dropna()
+    # Dim 2: core_hicp_yoy (вече е YoY %)
+    if "EA_HICP_CORE" in snapshot:
+        cols["core_hicp_yoy"] = _to_month_end(snapshot["EA_HICP_CORE"])
 
-    # 5. Dim 4 — 10Y-2Y; ако T10Y2Y липсва, computed от DGS10 − DGS2
-    yc = m.get("ANALOG_T10Y2Y", pd.Series(dtype=float))
-    if yc.empty:
-        dgs10 = m.get("ANALOG_DGS10", pd.Series(dtype=float))
-        dgs2 = m.get("ANALOG_DGS2", pd.Series(dtype=float))
-        yc = (dgs10 - dgs2).dropna()
+    # Dim 3: real_dfr = DFR − core_hicp_yoy
+    if "ECB_DFR" in snapshot and "EA_HICP_CORE" in snapshot:
+        dfr_m = _to_month_end(snapshot["ECB_DFR"])
+        core_m = _to_month_end(snapshot["EA_HICP_CORE"])
+        idx_common = dfr_m.index.intersection(core_m.index)
+        cols["real_dfr"] = (dfr_m.loc[idx_common] - core_m.loc[idx_common]).dropna()
 
-    # 6. Dim 5 — HY OAS с BAA − DGS10 proxy pre-1996-12
-    hy = m.get("ANALOG_HY_OAS", pd.Series(dtype=float))
-    baa = m.get("ANALOG_BAA", pd.Series(dtype=float))
-    dgs10 = m.get("ANALOG_DGS10", pd.Series(dtype=float))
-    baa_spread = (baa - dgs10).dropna() if not baa.empty else pd.Series(dtype=float)
+    # Dim 4: yc_10y2y = 10Y - 2Y
+    if "EA_BUND_10Y" in snapshot and "EA_BUND_2Y" in snapshot:
+        y10 = _to_month_end(snapshot["EA_BUND_10Y"])
+        y2 = _to_month_end(snapshot["EA_BUND_2Y"])
+        idx_common = y10.index.intersection(y2.index)
+        cols["yc_10y2y"] = (y10.loc[idx_common] - y2.loc[idx_common]).dropna()
 
-    if not hy.empty and not baa_spread.empty:
-        hy_composite = _calibrate_proxy(hy, baa_spread, HY_OAS_START)
-    elif not hy.empty:
-        hy_composite = hy
-    elif not baa_spread.empty:
-        hy_composite = baa_spread
-    else:
-        hy_composite = pd.Series(dtype=float)
+    # Dim 5: sovereign_stress = IT_10Y - DE_10Y
+    if "IT_10Y" in snapshot and "DE_10Y" in snapshot:
+        it = _to_month_end(snapshot["IT_10Y"])
+        de = _to_month_end(snapshot["DE_10Y"])
+        idx_common = it.index.intersection(de.index)
+        cols["sovereign_stress"] = (it.loc[idx_common] - de.loc[idx_common]).dropna()
 
-    # 7. Dim 6 — INDPRO YoY
-    indpro = m.get("ANALOG_INDPRO", pd.Series(dtype=float))
-    ip_yoy = _yoy_pct(indpro) if not indpro.empty else pd.Series(dtype=float)
+    # Dim 6: ip_yoy
+    if "EA_IP" in snapshot:
+        ip_m = _to_month_end(snapshot["EA_IP"])
+        cols["ip_yoy"] = _yoy_pct(ip_m)
 
-    # 8. Dim 7 — Breakeven 10Y с MICH proxy pre-2003-01
-    be = m.get("ANALOG_T10YIE", pd.Series(dtype=float))
-    mich = m.get("ANALOG_MICH", pd.Series(dtype=float))
-    if not be.empty and not mich.empty:
-        breakeven = _calibrate_proxy(be, mich, BREAKEVEN_START)
-    elif not be.empty:
-        breakeven = be
-    elif not mich.empty:
-        breakeven = mich
-    else:
-        breakeven = pd.Series(dtype=float)
+    # Dim 7: sahm
+    if "EA_UNRATE" in snapshot:
+        unrate_m = _to_month_end(snapshot["EA_UNRATE"])
+        cols["sahm"] = _compute_sahm_rule(unrate_m)
 
-    # 9. Dim 8 — SAHM rule от UNRATE
-    sahm = _compute_sahm_rule(unrate) if not unrate.empty else pd.Series(dtype=float)
+    if not cols:
+        return pd.DataFrame(columns=STATE_VECTOR_DIMS)
 
-    # 10. Merge
-    df = pd.concat(
-        {
-            "unrate": unrate,
-            "core_cpi_yoy": core_cpi_yoy,
-            "real_ffr": real_ffr,
-            "yc_10y2y": yc,
-            "hy_oas": hy_composite,
-            "ip_yoy": ip_yoy,
-            "breakeven": breakeven,
-            "sahm": sahm,
-        },
-        axis=1,
-    )
-
-    # 11. Filter към window
-    df = df.loc[pd.Timestamp(start):].copy()
-    df = df.sort_index()
-
-    # 12. Column order
-    df = df[STATE_VECTOR_DIMS]
-
+    df = pd.DataFrame(cols)
+    df = df.reindex(columns=STATE_VECTOR_DIMS)  # стабилен column order
+    df = df[df.index >= pd.Timestamp(window_start)]
     return df
 
 
-# ============================================================
-# Z-SCORING
-# ============================================================
-
 def z_score_matrix(history_df: pd.DataFrame) -> pd.DataFrame:
-    """Full-sample z-score на всяка колона.
+    """Z-score всяка колонка спрямо собствената history."""
+    if history_df.empty:
+        return history_df
 
-    Args:
-        history_df: output от build_history_matrix.
-
-    Returns:
-        DataFrame със същия shape. Колона с константна стойност → 0.0.
-        NaN-ите в входа остават NaN.
-    """
-    out = pd.DataFrame(index=history_df.index, columns=history_df.columns, dtype=float)
+    z = pd.DataFrame(index=history_df.index, columns=history_df.columns, dtype=float)
     for col in history_df.columns:
         s = history_df[col].dropna()
-        if s.empty:
-            out[col] = np.nan
-            continue
-        mu = s.mean()
-        sigma = s.std(ddof=0)
-        if sigma == 0 or np.isnan(sigma):
-            out[col] = 0.0
-            out.loc[history_df[col].isna(), col] = np.nan
-            continue
-        out[col] = (history_df[col] - mu) / sigma
-    return out
+        if len(s) < 2 or s.std() == 0:
+            z[col] = 0.0
+        else:
+            mean = s.mean()
+            std = s.std()
+            z[col] = (history_df[col] - mean) / std
+    return z
 
-
-# ============================================================
-# CURRENT VECTOR
-# ============================================================
 
 def build_current_vector(
     history_df: pd.DataFrame,
-    history_z: pd.DataFrame,
+    z_df: Optional[pd.DataFrame] = None,
     today: Optional[pd.Timestamp] = None,
 ) -> Optional[MacroState]:
-    """Текущият macro state — последният complete-case ред в history_z.
+    """Връща MacroState за последния complete-case observation в history_df.
 
     Args:
-        history_df: raw matrix от build_history_matrix.
-        history_z: z-scored matrix от z_score_matrix.
-        today: ако е зададен, търсим последния ред ≤ today; иначе последния
-               ред в индекса. Полезно при smoke-тест на фиксирана дата.
+        history_df: history matrix (от build_history_matrix)
+        z_df: precomputed z-score matrix; ако None, изчислява го
+        today: cut-off дата (default = последната налична)
 
     Returns:
-        MacroState или None ако няма complete-case ред.
+        MacroState с raw + z за последния complete-case ред,
+        или None ако няма complete-case ред (всички dims must be present).
     """
-    z = history_z.dropna()
-    # Ако z е празен (empty history) индексът не е DatetimeIndex и
-    # сравнението ≤ Timestamp крашва. Guard-ваме преди filter-а.
-    if z.empty:
+    if history_df.empty:
         return None
+
+    if z_df is None:
+        z_df = z_score_matrix(history_df)
+
+    df = history_df
     if today is not None:
-        z = z.loc[z.index <= pd.Timestamp(today)]
-    if z.empty:
+        df = df[df.index <= today]
+        if df.empty:
+            return None
+
+    # Намираме последния complete-case ред (всички STATE_VECTOR_DIMS налични)
+    available_dims = [d for d in STATE_VECTOR_DIMS if d in df.columns]
+    if not available_dims:
         return None
 
-    as_of = z.index[-1]
-    z_row = z.iloc[-1]
-    raw_row = history_df.loc[as_of]
+    complete_mask = df[available_dims].notna().all(axis=1)
+    if not complete_mask.any():
+        return None
 
-    return MacroState(
-        as_of=as_of,
-        raw={d: float(raw_row[d]) for d in STATE_VECTOR_DIMS},
-        z={d: float(z_row[d]) for d in STATE_VECTOR_DIMS},
-    )
+    last_complete_idx = df[complete_mask].index[-1]
+
+    last_row = df.loc[last_complete_idx]
+    last_z_row = z_df.loc[last_complete_idx] if last_complete_idx in z_df.index else None
+    if last_z_row is None:
+        return None
+
+    raw = {
+        col: float(last_row[col])
+        for col in STATE_VECTOR_DIMS
+        if col in last_row.index and pd.notna(last_row[col])
+    }
+    z = {
+        col: float(last_z_row[col])
+        for col in STATE_VECTOR_DIMS
+        if col in last_z_row.index and pd.notna(last_z_row[col])
+    }
+
+    return MacroState(as_of=last_complete_idx, raw=raw, z=z)

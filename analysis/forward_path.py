@@ -40,7 +40,7 @@ from analysis.analog_matcher import AnalogResult
 
 
 DEFAULT_HORIZONS_MONTHS: list[int] = [3, 6, 12]
-DEFAULT_OUTCOME_DIMS: list[str] = ["unrate", "core_cpi_yoy", "real_ffr", "yc_10y2y"]
+DEFAULT_OUTCOME_DIMS: list[str] = ["unrate", "core_hicp_yoy", "real_dfr", "yc_10y2y"]
 
 
 # ============================================================

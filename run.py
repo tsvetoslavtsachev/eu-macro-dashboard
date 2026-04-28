@@ -181,6 +181,20 @@ def cmd_briefing(args) -> int:
         except Exception as e:
             print(f"   ⚠ {name}: грешка — {e}")
 
+    analog_bundle = None
+    if args.with_analogs:
+        from analysis.analog_pipeline import compute_analog_bundle
+        print("🔭 Изчисляване на исторически аналози...")
+        try:
+            analog_bundle = compute_analog_bundle(snapshot, k=3)
+            if analog_bundle is None:
+                print("   ⚠ Недостатъчно история за аналози (необходими 7 dim complete)")
+            else:
+                print(f"   ✓ Top analog: {analog_bundle.analogs[0].date.strftime('%Y-%m')} "
+                      f"(similarity {analog_bundle.analogs[0].similarity:.2f})")
+        except Exception as e:
+            print(f"   ❌ Грешка: {e}")
+
     output_path = f"{OUTPUT_DIR}/briefing_{datetime.now().strftime('%Y-%m-%d')}.html"
     print(f"📝 Генериране на HTML → {output_path}")
 
@@ -188,7 +202,7 @@ def cmd_briefing(args) -> int:
         snapshot=snapshot,
         modules_results=modules_results,
         output_path=output_path,
-        analog_bundle=None if not args.with_analogs else None,
+        analog_bundle=analog_bundle,
         journal_entries=None if not args.with_journal else None,
     )
 
