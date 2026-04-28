@@ -1,0 +1,50 @@
+# ─── Secrets (ECB/Eurostat не изискват API key, но .env поддържа staging endpoints) ─
+.env
+*.key
+
+# ─── Generated artifacts ────────────────────────────────────────────────────
+output/
+data/ecb_cache.json
+data/ecb_cache.json.bak
+data/eurostat_cache.json
+data/eurostat_cache.json.bak
+data/state/
+
+# ─── Journal content (framework-only is public; notes are private) ──────────
+# See journal/HOWTO.md for rationale.
+journal/**/*.md
+!journal/_template.md
+!journal/HOWTO.md
+journal/README.md
+
+# ─── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ─── Virtual envs ───────────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ─── Editors / OS ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ─── Sandbox artifacts (ad hoc, not public) ─────────────────────────────────
+scripts/sandbox/*.py
+!scripts/sandbox/.gitkeep
+
+# ─── Misc ───────────────────────────────────────────────────────────────────
+pytest-cache-files-*/
+*.log
