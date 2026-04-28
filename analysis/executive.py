@@ -3,6 +3,19 @@ analysis/executive.py
 =====================
 Executive Summary + Regime synthesis.
 
+⚠ PHASE 3 TODO — NARRATIVES СА US-SPECIFIC (Fed → ECB)
+======================================================
+Regime detection логиката (8-state synthesis от divergence/breadth/anomaly)
+е data-source agnostic и работи без промени. НО narrative templates по-долу
+референцират "Fed credibility", "Fed tightening", "Fed-anchored expectations"
+и подобни — тези се пренаписват в Phase 3 за ECB context:
+  - "Fed credibility" → "ECB credibility / SPF anchoring"
+  - "Fed tightening" → "ECB hiking cycle"
+  - "Fed-anchored" → "ECB-anchored (SPF/swap-implied)"
+  - "Fed reaction function" → "ECB reaction function (DFR + balance sheet)"
+
+Phase 0/1 не извикват regime synthesis (брифинг е Phase 3).
+
 Агрегира cross-lens + breadth + anomaly + non-consensus в:
   1. Regime label — кратка икономическа диагноза (8 възможни режима)
   2. Lens таблица — 4 реда × {direction, breadth%, anomaly count, NEW-5Y count}

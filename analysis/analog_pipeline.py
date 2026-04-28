@@ -3,6 +3,12 @@ analysis/analog_pipeline.py
 ===========================
 End-to-end pipeline за Historical Analog Engine.
 
+⚠ PHASE 4 TODO — ORCHESTRATION layer
+====================================
+Pipeline-ът извиква macro_vector + analog_matcher + analog_comparison +
+forward_path. Всички тези изискват EA adaptation в Phase 4. Pipeline-ът
+сам по себе си е data-source agnostic.
+
 Орекстрира 4-те analog modula в едно извикване:
 
     fetched {ANALOG_KEY: pd.Series}

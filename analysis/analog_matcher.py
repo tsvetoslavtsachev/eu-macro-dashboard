@@ -3,6 +3,24 @@ analysis/analog_matcher.py
 ==========================
 Cosine similarity analog search над 8-dim macro state history.
 
+⚠ PHASE 4 TODO — EPISODE LABELS СА US-SPECIFIC
+==============================================
+Cosine similarity логиката е data-source agnostic, но списъкът с labeled
+episode-и (HISTORICAL_EPISODES по-долу) съдържа US history (1973 oil shock,
+Volcker disinflation, Greenspan put, GFC, COVID, Fed hiking 2022). За EA
+trebva да се замени с Eurozone-specific епизоди:
+  - Dotcom + ECB rate hikes (2000-2001)
+  - GFC (2008-2009)
+  - EU sovereign debt crisis (2010-2012) ← EA-unique
+  - Draghi "whatever it takes" (2012)
+  - ECB QE (2015-2016)
+  - COVID + PEPP (2020)
+  - ECB hiking + energy shock (2022-2023)
+  - Disinflation (2024-2026)
+
+Phase 4 ще пренапише HISTORICAL_EPISODES и ще постанови analog_history_start
+от 1999 (EMU era).
+
 Функция `find_analogs` дава top-k исторически месеци, най-близки до
 настоящия macro state, с два guard-rail-а:
 

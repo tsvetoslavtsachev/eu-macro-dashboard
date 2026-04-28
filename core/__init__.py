@@ -1,1 +1,1 @@
-# econ_v2 core package
+# eu-macro-dashboard core package

@@ -113,7 +113,7 @@ def compute_anomalies(
     """Сканира snapshot-а за серии с |z|>threshold, връща top-N.
 
     Args:
-        snapshot: {series_key → pd.Series} (каталожен ключ, не FRED ID).
+        snapshot: {series_key → pd.Series} (каталожен ключ, не data-source ID).
         z_threshold: minimum |z| за да се флагне серия.
         top_n: колко top серии да върне в top list-а.
         lookback_years: window за new_extreme проверката.

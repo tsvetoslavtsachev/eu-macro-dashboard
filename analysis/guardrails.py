@@ -1,7 +1,29 @@
 """
 analysis/guardrails.py
 ======================
-Два компонента:
+
+⚠ PHASE 2/3 TODO — US-SPECIFIC SIGNALS
+======================================
+Този файл е копиран 1:1 от us-macro-dashboard. Сигналите по-долу са
+US-калибрирани:
+  - Sahm rule (US BLS unemployment definition)
+  - ICSA initial claims (US Department of Labor weekly)
+  - T10Y2Y инверсия (US Treasury curve)
+  - ISM/Philly Fed (US regional surveys)
+  - NFCI (Chicago Fed National Financial Conditions Index)
+
+EA equivalents за Phase 2/3:
+  - Sahm rule → проверява че работи на une_rt_m (Eurostat месечна; добре)
+  - ICSA → няма EA federal benefit signal; може skip или job vacancy proxy
+  - T10Y2Y → DE Bund 10Y-2Y spread (германски benchmark)
+  - ISM/Philly Fed → ESI subindices (DG ECFIN industry confidence)
+  - NFCI → CISS (ECB Composite Indicator of Systemic Stress)
+
+Phase 0/1 НЕ извикват тези проверки. Phase 2 при build-ване на модулите
+ще трябва или да адаптира сигналите, или да префактори на data-source
+agnostic shape (signal name + threshold + series_key + descriptor).
+
+Два компонента (както са СЕГА — US):
 
 1. Regime Falsification criteria
    За всеки идентифициран regime, какво би го обезсилило.

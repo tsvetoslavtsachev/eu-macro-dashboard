@@ -3,7 +3,22 @@ analysis/macro_vector.py
 ========================
 8-dimensional macro state vector за historical analog engine (Phase 4).
 
-Дименсии (8):
+⚠ PHASE 4 TODO — US-SPECIFIC, ИЗИСКВА EA REWRITE
+================================================
+Този файл е копиран 1:1 от us-macro-dashboard. Съдържанието по-долу е
+US-калибрирано (FRED IDs, US dimensions като real_ffr/Sahm rule, splice
+дати 1996/2003 за HY и breakeven). EA адаптацията се прави в Phase 4:
+
+  - dim 3: real_ffr → real_dfr (DFR − HICP core YoY)
+  - dim 5: hy_oas → sovereign_stress (BTP-Bund 10Y spread)
+  - dim 7: breakeven (T10YIE) → ECB SPF inflation expectations
+  - episode labels → EA-specific (sovereign crisis 2010-12, Draghi 2012, etc.)
+  - history start: 1976 → 1999 (EMU era)
+
+Phase 0/1/2/3 НЕ извикват тези функции (analog engine е opt-in флаг
+--with-analogs); файлът е inert докато Phase 4 не пренапише dimensions.
+
+Дименсии (8) — както са СЕГА (US):
   1. unrate          — UNRATE level (%)
   2. core_cpi_yoy    — CPILFESL YoY (%)
   3. real_ffr        — DFF monthly avg − core CPI YoY (%)

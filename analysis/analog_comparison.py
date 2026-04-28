@@ -3,6 +3,12 @@ analysis/analog_comparison.py
 =============================
 Dimension-level диагностика на analog resemblance.
 
+⚠ PHASE 4 TODO — DIM_LABELS_BG/DIM_UNITS imported from macro_vector
+===================================================================
+Логиката е dimension-agnostic, но изтегля DIM_LABELS_BG и STATE_VECTOR_DIMS
+от macro_vector.py. Когато Phase 4 пренапише macro_vector с EA dimensions,
+тук няма да има промени — labels-ите се propagate-ват автоматично.
+
 Дава отговор на "защо този analog прилича на сега?" — кои dims са
 най-близки (similarity drivers) и кои най-далеч (divergences, където
 паралелът се разпада). Това е честността на analog-а: не само един

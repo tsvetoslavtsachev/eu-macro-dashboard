@@ -3,7 +3,7 @@ analysis/breadth.py
 ===================
 Lens-level breadth отчет.
 
-За всяка леща (labor, growth, inflation, liquidity) и даден snapshot от серии,
+За всяка леща (labor, inflation, growth, credit, ecb) и даден snapshot от серии,
 изчислява breadth метриките за всеки peer_group, който принадлежи към лещата.
 
 Dependencies:
@@ -23,8 +23,8 @@ Dependencies:
 
 Правила:
   - peer_group с <2 налични серии → direction="insufficient_data", breadth=NaN.
-    Това е safety net; в нормалното състояние след Phase 2.5 всички peer_groups
-    имат поне 2 членове в каталога. Но ако snapshot е частичен (FRED не е отговорил
+    Това е safety net; в нормалното състояние всички peer_groups имат поне
+    2 членове в каталога. Но ако snapshot е частичен (data source не е отговорил
     за някоя серия), да не произведем deceptive breadth от 1 серия.
   - Прагове за `direction`:
       > 0.6 → "expanding" (повечето серии в групата движат заедно нагоре)
@@ -102,8 +102,8 @@ def compute_lens_breadth(
     """Сглобява lens-level breadth отчет.
 
     Args:
-        lens: една от ALLOWED_LENSES ("labor"/"growth"/"inflation"/"liquidity"/"housing").
-        snapshot: {series_key → pd.Series} — каталожен ключ, не FRED ID.
+        lens: една от ALLOWED_LENSES ("labor"/"inflation"/"growth"/"credit"/"ecb").
+        snapshot: {series_key → pd.Series} — каталожен ключ, не data-source ID.
 
     Returns:
         LensBreadthReport с по един PeerGroupBreadth на peer_group.

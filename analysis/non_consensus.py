@@ -113,7 +113,7 @@ def compute_non_consensus(
     """Построява NonConsensusReport за всички tagged серии в каталога.
 
     Args:
-        snapshot: {series_key → pd.Series} (каталожен ключ, не FRED ID).
+        snapshot: {series_key → pd.Series} (каталожен ключ, не data-source ID).
         z_threshold: праг за |z_score| → "екстремум".
 
     Returns:
@@ -122,7 +122,7 @@ def compute_non_consensus(
           - highlights: dedupe-нат топ списък, сортиран по signal_strength и |z|
     """
     # Кешираме reading-а по series_key, за да не сметнем два пъти
-    # (TEMPHELPS/USINFO са и non_consensus, и ai_exposure)
+    # (серия може да е tag-ната с няколко tag-а)
     readings_by_key: dict[str, NonConsensusReading] = {}
 
     for tag in sorted(ALLOWED_TAGS):
