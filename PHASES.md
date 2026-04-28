@@ -171,11 +171,40 @@ python run.py --briefing --with-analogs --with-journal
 
 ---
 
-## Roadmap отвъд v0.1.0 (Phase 4.5+ candidates)
+## Phase 4.5: 8-dim macro vector — inflation expectations (post-v0.1.0)
+
+**Цел:** Активиране на 8-та dimension в macro vector чрез ECB SPF long-term HICP forecast.
+
+**Какво се направи:**
+- Research: probed ECB Data Portal SDMX REST API; намерен ECB_FCT1 datastructure с 7 dimensions (FREQ, REF_AREA, FCT_TOPIC, FCT_BREAKDOWN, FCT_HORIZON, SURVEY_FREQ, FCT_SOURCE)
+- Discovered key: `SPF/Q.U2.HICP.POINT.LT.Q.001` — long-term point forecast (1999+, quarterly)
+- catalog/series.py: добавен `EA_SPF_HICP_LT` (peer_group=expectations, в inflation lens)
+- analysis/macro_vector.py:
+  - STATE_VECTOR_DIMS extended to 8: `["unrate", "core_hicp_yoy", "real_dfr", "yc_10y2y", "sovereign_stress", "ip_yoy", "sahm", "inflation_expectations"]`
+  - DIM_LABELS_BG / DIM_UNITS обновени
+  - build_history_matrix: SPF quarterly → forward-filled monthly за alignment
+- Tests: 134 → 136 (+2 нови за SPF behavior — quarterly→monthly fill, missing series resilience)
+- Catalog: 16 → 17 серии
+
+**Effects върху analog matching (cosine similarity refinement):**
+
+7-dim vs 8-dim top-3:
+```
+7-dim (Phase 4 baseline):  Phase 4.5 (8-dim):
+  2008-03  0.756              2008-03  0.781
+  2023-12  0.707              2023-12  0.727
+  2007-02  0.646              2007-02  0.682
+```
+8-та dim добавя refining signal — текущите EA inflation expectations (2.00%) са anchored at target (similar to 2008-03 pre-GFC anchoring), което подсилва analog match-а.
+
+**Текущ state на dim 8 (2025-12):** **2.00%** — perfectly anchored at ECB target.
+
+---
+
+## Roadmap отвъд v0.2.0
 
 | Priority | Item | Estimated effort |
 |---|---|---|
-| High | Inflation expectations dim (HICP swap или ECB SPF) → 8-dim vector | 1 session |
 | High | Populate `catalog/cross_lens_pairs.py` (стагфлация тест, ECB transmission) | 1 session |
 | High | Add 10+ серии (PMI ESI subindices, retail trade, building permits, employment LFS) | 1-2 sessions |
 | Medium | WoW delta активиране в run.py + briefing | 0.5 session |

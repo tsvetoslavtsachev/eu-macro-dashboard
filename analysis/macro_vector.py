@@ -1,16 +1,18 @@
 """
 analysis/macro_vector.py
 ========================
-7-dimensional macro state vector за Eurozone historical analog engine.
+8-dimensional macro state vector за Eurozone historical analog engine.
 
-Дименсии (7):
-  1. unrate              — EA_UNRATE level (%) [Eurostat]
-  2. core_hicp_yoy       — EA_HICP_CORE level (%) [вече YoY от Eurostat]
-  3. real_dfr            — ECB_DFR − EA_HICP_CORE (real policy rate, %)
-  4. yc_10y2y            — EA_BUND_10Y − EA_BUND_2Y (curve slope, pp)
-  5. sovereign_stress    — IT_10Y − DE_10Y (BTP-Bund spread, pp; EA proxy за HY OAS)
-  6. ip_yoy              — EA_IP YoY (%, computed)
-  7. sahm                — Sahm rule (3mma EA_UNRATE − min trailing 12m 3mma, pp)
+Дименсии (8):
+  1. unrate                  — EA_UNRATE level (%) [Eurostat]
+  2. core_hicp_yoy           — EA_HICP_CORE level (%) [вече YoY от Eurostat]
+  3. real_dfr                — ECB_DFR − EA_HICP_CORE (real policy rate, %)
+  4. yc_10y2y                — EA_BUND_10Y − EA_BUND_2Y (curve slope, pp)
+  5. sovereign_stress        — IT_10Y − DE_10Y (BTP-Bund spread, pp; EA proxy за HY OAS)
+  6. ip_yoy                  — EA_IP YoY (%, computed)
+  7. sahm                    — Sahm rule (3mma EA_UNRATE − min trailing 12m 3mma, pp)
+  8. inflation_expectations  — ECB SPF long-term HICP point forecast (%, quarterly,
+                               forward-filled to monthly)
 
 Window: 1999-01-01 → сега (~26 години EMU история).
 Pre-1999 синтетика (GDP-weighted DM legacy currencies) умишлено пропусната —
@@ -19,8 +21,8 @@ Pre-1999 синтетика (GDP-weighted DM legacy currencies) умишлено
 Различия от US version:
   - real_ffr → real_dfr (ECB Deposit Facility Rate)
   - hy_oas → sovereign_stress (BTP-Bund proxy; iTraxx е платено)
-  - breakeven (T10YIE) → ПРОПУСНАТО (ECB SPF е quarterly с lag; Phase 4.5)
-  - 8 dims → 7 dims за v1
+  - breakeven (T10YIE) → SPF long-term inflation expectations (different methodology
+    но similar role: market vs survey-based expectations anchor)
   - Без proxy splicing — историята започва 1999
 
 Запазен интерфейс (за analog_matcher.py / analog_pipeline.py):
@@ -28,10 +30,10 @@ Pre-1999 синтетика (GDP-weighted DM legacy currencies) умишлено
   MacroState — dataclass с as_array()
   build_history_matrix, z_score_matrix, build_current_vector — public functions
 
-⚠ PHASE 4 — текущо implementation. Phase 4.5+ ще добави:
-  - dim 7: inflation expectations (HICP swap или ECB SPF)
-  - 8-dim vector
-  - episode-specific tags (sovereign crisis, Draghi, COVID PEPP, etc.)
+Phase 4.5: 8-dim activated. SPF expectations (EA_SPF_HICP_LT) са quarterly
+с lag (~end-quarter release); forward-filled до monthly за alignment с другите
+dims. Анализаторът интерпретира dim 8 като "anchoring" signal — близо до 2%
+target = anchored, > 0.5pp deviation = de-anchoring risk.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -53,26 +55,29 @@ STATE_VECTOR_DIMS: list[str] = [
     "sovereign_stress",
     "ip_yoy",
     "sahm",
+    "inflation_expectations",
 ]
 
 DIM_LABELS_BG: dict[str, str] = {
-    "unrate":           "Безработица (EA)",
-    "core_hicp_yoy":    "HICP базова инфлация",
-    "real_dfr":         "Реален DFR",
-    "yc_10y2y":         "Крива 10Y-2Y",
-    "sovereign_stress": "Sovereign стрес (BTP-Bund)",
-    "ip_yoy":           "Промишлено производство YoY",
-    "sahm":             "Sahm правило",
+    "unrate":                 "Безработица (EA)",
+    "core_hicp_yoy":          "HICP базова инфлация",
+    "real_dfr":               "Реален DFR",
+    "yc_10y2y":               "Крива 10Y-2Y",
+    "sovereign_stress":       "Sovereign стрес (BTP-Bund)",
+    "ip_yoy":                 "Промишлено производство YoY",
+    "sahm":                   "Sahm правило",
+    "inflation_expectations": "Inflation очаквания (SPF LT)",
 }
 
 DIM_UNITS: dict[str, str] = {
-    "unrate":           "%",
-    "core_hicp_yoy":    "%",
-    "real_dfr":         "%",
-    "yc_10y2y":         "pp",
-    "sovereign_stress": "pp",
-    "ip_yoy":           "%",
-    "sahm":             "pp",
+    "unrate":                 "%",
+    "core_hicp_yoy":          "%",
+    "real_dfr":               "%",
+    "yc_10y2y":               "pp",
+    "sovereign_stress":       "pp",
+    "ip_yoy":                 "%",
+    "sahm":                   "pp",
+    "inflation_expectations": "%",
 }
 
 
@@ -143,6 +148,7 @@ def build_history_matrix(
         "EA_BUND_10Y", "EA_BUND_2Y",
         "IT_10Y", "DE_10Y",
         "EA_IP",
+        "EA_SPF_HICP_LT",  # quarterly, forward-filled to monthly за dim 8
     }
     missing = required - set(snapshot.keys())
     if missing:
@@ -189,6 +195,17 @@ def build_history_matrix(
     if "EA_UNRATE" in snapshot:
         unrate_m = _to_month_end(snapshot["EA_UNRATE"])
         cols["sahm"] = _compute_sahm_rule(unrate_m)
+
+    # Dim 8: inflation_expectations (quarterly SPF → forward-filled monthly)
+    if "EA_SPF_HICP_LT" in snapshot:
+        spf = snapshot["EA_SPF_HICP_LT"].copy()
+        if not spf.empty:
+            if not isinstance(spf.index, pd.DatetimeIndex):
+                spf.index = pd.to_datetime(spf.index)
+            # Quarterly наблюдения с date = quarter-start; resample към monthly
+            # с forward-fill (всеки месец наследява последния известен SPF).
+            spf_monthly = spf.resample("MS").ffill()
+            cols["inflation_expectations"] = spf_monthly
 
     if not cols:
         return pd.DataFrame(columns=STATE_VECTOR_DIMS)

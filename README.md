@@ -114,7 +114,7 @@ eu_macro_dashboard/
 | Source | FRED (Federal Reserve) | ECB SDW + Eurostat |
 | API key | required (FRED key) | none (публични endpoints) |
 | History start | 1970 | 1999 (EMU era) |
-| Macro vector | 8-dim | 7-dim (без inflation expectations) |
+| Macro vector | 8-dim (T10YIE breakeven) | 8-dim (ECB SPF long-term expectations) |
 | Lens count | 4 (Labor, Inflation, Growth, Liquidity) | 5 (+ ECB monetary stance) |
 | Inflation weight | 0.20 | 0.30 (ECB single mandate) |
 | Credit proxy | HY OAS, IG OAS | CISS + sovereign spreads (BTP-Bund) |
@@ -138,8 +138,8 @@ eu_macro_dashboard/
 
 ## Развитие след v0.1.0
 
-Планирани разширения (Phase 4.5/5.5+):
-- Inflation expectations dim (HICP swap или ECB SPF) → пълен 8-dim vector
+Планирани разширения:
+- ✅ ~~Inflation expectations dim → 8-dim vector~~ (v0.2.0: ECB SPF long-term)
 - WoW delta секция (след първата session с persisted state)
 - Cross-lens divergence pairs за `analysis/divergence.py`
 - Country drill-down (DE/FR/IT/ES) — текущо само EA-aggregate

@@ -34,22 +34,28 @@ def _monthly(values, end="2026-01-01"):
 def _full_snapshot(n: int = 300):
     """Realistic-ish synthetic EA history (от 1999 до 2025)."""
     end = "2025-12-01"
+    # SPF е quarterly → правим series с quarterly index за по-realistic тест
+    spf_idx = pd.date_range(end=end, periods=max(n // 3, 4), freq="QS")
+    n_q = len(spf_idx)
+    spf = pd.Series(np.linspace(1.8, 2.0, n_q) + np.random.normal(0, 0.05, n_q),
+                    index=spf_idx)
     return {
-        "EA_UNRATE":      _monthly(np.linspace(8.0, 6.0, n), end=end),
-        "EA_HICP_CORE":   _monthly(np.linspace(1.0, 2.5, n) + np.random.normal(0, 0.3, n), end=end),
-        "ECB_DFR":        _monthly(np.linspace(0.0, 2.0, n), end=end),
-        "EA_BUND_10Y":    _monthly(np.linspace(4.0, 3.0, n), end=end),
-        "EA_BUND_2Y":     _monthly(np.linspace(3.0, 2.5, n), end=end),
-        "IT_10Y":         _monthly(np.linspace(4.5, 4.0, n), end=end),
-        "DE_10Y":         _monthly(np.linspace(3.5, 2.5, n), end=end),
-        "EA_IP":          _monthly(np.linspace(95.0, 105.0, n), end=end),
+        "EA_UNRATE":         _monthly(np.linspace(8.0, 6.0, n), end=end),
+        "EA_HICP_CORE":      _monthly(np.linspace(1.0, 2.5, n) + np.random.normal(0, 0.3, n), end=end),
+        "ECB_DFR":           _monthly(np.linspace(0.0, 2.0, n), end=end),
+        "EA_BUND_10Y":       _monthly(np.linspace(4.0, 3.0, n), end=end),
+        "EA_BUND_2Y":        _monthly(np.linspace(3.0, 2.5, n), end=end),
+        "IT_10Y":            _monthly(np.linspace(4.5, 4.0, n), end=end),
+        "DE_10Y":            _monthly(np.linspace(3.5, 2.5, n), end=end),
+        "EA_IP":             _monthly(np.linspace(95.0, 105.0, n), end=end),
+        "EA_SPF_HICP_LT":    spf,
     }
 
 
 # ── Constants ───────────────────────────────────────────────────
 
-def test_state_vector_dims_has_7_entries():
-    assert len(STATE_VECTOR_DIMS) == 7
+def test_state_vector_dims_has_8_entries():
+    assert len(STATE_VECTOR_DIMS) == 8
 
 
 def test_dim_labels_cover_all_dims():
@@ -59,13 +65,14 @@ def test_dim_labels_cover_all_dims():
 
 
 def test_no_us_specific_dim_names():
-    """След Phase 4 не трябва да остане real_ffr или hy_oas."""
+    """След Phase 4.5 не трябва да остане US dim name."""
     assert "real_ffr" not in STATE_VECTOR_DIMS
     assert "hy_oas" not in STATE_VECTOR_DIMS
     assert "breakeven" not in STATE_VECTOR_DIMS
     # Трябва да присъстват EA-specific версии
     assert "real_dfr" in STATE_VECTOR_DIMS
     assert "sovereign_stress" in STATE_VECTOR_DIMS
+    assert "inflation_expectations" in STATE_VECTOR_DIMS
 
 
 # ── build_history_matrix ────────────────────────────────────────
@@ -83,6 +90,24 @@ def test_build_history_matrix_handles_missing_series():
     df = build_history_matrix(snap)
     # yc_10y2y derived от 10Y-2Y; ако 2Y липсва, цялата колона е NaN
     assert df["yc_10y2y"].dropna().empty
+
+
+def test_build_history_matrix_inflation_expectations_quarterly_to_monthly():
+    """SPF (quarterly) трябва да се forward-fill до monthly."""
+    snap = _full_snapshot(120)
+    df = build_history_matrix(snap)
+    # SPF има ~40 quarterly observations за 120 monthly periods → след ffill
+    # трябва да имаме почти всички 120 monthly стойности
+    n_filled = df["inflation_expectations"].dropna().shape[0]
+    assert n_filled >= 100, f"forward-fill failed; only {n_filled} months filled"
+
+
+def test_build_history_matrix_handles_missing_spf():
+    """Без SPF series, dim 8 e empty но pipeline-ът не crashва."""
+    snap = _full_snapshot(60)
+    del snap["EA_SPF_HICP_LT"]
+    df = build_history_matrix(snap)
+    assert df["inflation_expectations"].dropna().empty
 
 
 def test_build_history_matrix_empty_snapshot():
@@ -179,8 +204,8 @@ def test_build_current_vector_returns_macro_state():
     state = build_current_vector(df)
     assert isinstance(state, MacroState)
     assert state.is_complete()
-    assert len(state.raw) == 7
-    assert len(state.z) == 7
+    assert len(state.raw) == 8
+    assert len(state.z) == 8
 
 
 def test_build_current_vector_returns_none_when_empty():
@@ -209,4 +234,4 @@ def test_macro_state_as_array_shape():
     df = build_history_matrix(snap)
     state = build_current_vector(df)
     arr = state.as_array()
-    assert arr.shape == (7,)
+    assert arr.shape == (8,)

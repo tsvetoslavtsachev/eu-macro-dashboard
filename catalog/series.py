@@ -136,6 +136,24 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "Sticky компонент на core inflation. Wage-sensitive — "
                           "leading indicator за core persistence.",
     },
+    "EA_SPF_HICP_LT": {
+        "source": "ecb",
+        "id": "SPF/Q.U2.HICP.POINT.LT.Q.001",
+        "region": "EA",
+        "name_bg": "ECB SPF — HICP long-term очаквания",
+        "name_en": "ECB SPF Long-term HICP Inflation Expectations",
+        "lens": ["inflation"],
+        "peer_group": "expectations",
+        "tags": [],
+        "transform": "level",
+        "historical_start": "1999-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "end_quarter",
+        "revision_prone": False,
+        "narrative_hint": "Survey of Professional Forecasters point estimate за "
+                          "long-term inflation. Anchored индикатор: ~2% target. "
+                          "Дeviation > 0.3pp от target е значителен.",
+    },
 
     # ════════════════════════════════════════════════════════
     # GROWTH (1)

@@ -135,9 +135,9 @@ ecb:       0.15   ← нов lens (rates, balance, transmission)
 
 ---
 
-## 7. Historical Analog Engine (Phase 4)
+## 7. Historical Analog Engine (Phase 4 / 4.5)
 
-7-dimensional macro state vector:
+8-dimensional macro state vector:
 
 | Dim | Source | Бележка |
 |---|---|---|
@@ -148,12 +148,9 @@ ecb:       0.15   ← нов lens (rates, balance, transmission)
 | 5. sovereign_stress | DERIVED: IT_10Y − DE_10Y | BTP-Bund proxy за HY OAS |
 | 6. ip_yoy | EA_IP YoY computed | Hard activity |
 | 7. sahm | Sahm rule на UNRATE | 3mma − 12m trailing min |
+| 8. inflation_expectations | ECB SPF/Q.U2.HICP.POINT.LT.Q.001 | Long-term anchored (quarterly forward-fill) |
 
-**Защо 7-dim, не 8?** US version има inflation expectations като 8-та dimension (T10YIE breakeven). За EA публично наличните expectations са:
-- ECB SPF — quarterly с 4-6 седмичен lag
-- HICP swap rates — 2004+ history (по-кратко от другите dims)
-
-→ Phase 4 v1 използва 7-dim. Phase 4.5 ще добави expectations като пълноценна dimension.
+**Phase 4.5 added dim 8** — ECB Survey of Professional Forecasters long-term HICP point forecast. Quarterly survey, end-of-quarter release; forward-filled до monthly за alignment. История от 1999 (EMU era), първа observation 1.80%, текуща 2.00% (точно anchored at ECB target). Dim 8 интерпретация: близо до 2% = anchored; > 0.5pp deviation = de-anchoring risk.
 
 **Algorithm:**
 1. `build_history_matrix(snapshot)` → DataFrame (327+ месеца × 7 dims)
