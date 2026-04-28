@@ -195,6 +195,16 @@ def cmd_briefing(args) -> int:
         except Exception as e:
             print(f"   ❌ Грешка: {e}")
 
+    journal_entries = None
+    if args.with_journal:
+        from scripts._utils import load_journal_entries
+        print("📓 Зареждане на journal entries...")
+        try:
+            journal_entries = load_journal_entries()
+            print(f"   ✓ {len(journal_entries)} entries намерени")
+        except Exception as e:
+            print(f"   ❌ Грешка: {e}")
+
     output_path = f"{OUTPUT_DIR}/briefing_{datetime.now().strftime('%Y-%m-%d')}.html"
     print(f"📝 Генериране на HTML → {output_path}")
 
@@ -203,7 +213,7 @@ def cmd_briefing(args) -> int:
         modules_results=modules_results,
         output_path=output_path,
         analog_bundle=analog_bundle,
-        journal_entries=None if not args.with_journal else None,
+        journal_entries=journal_entries,
     )
 
     print(f"✓ Briefing готов: {output_path}")

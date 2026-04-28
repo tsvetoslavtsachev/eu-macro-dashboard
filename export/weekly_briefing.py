@@ -272,6 +272,62 @@ def _render_analogs(bundle: Any) -> str:
 """
 
 
+_STATUS_LABELS_BG = {
+    "open_question": "❓ Отворен въпрос",
+    "hypothesis":    "🧪 Хипотеза",
+    "finding":       "✓ Извод",
+    "decision":      "◆ Решение",
+}
+
+_TOPIC_LABELS_BG = {
+    "labor":       "Трудов пазар",
+    "inflation":   "Инфлация",
+    "credit":      "Кредит",
+    "growth":      "Растеж",
+    "analogs":     "Исторически аналози",
+    "regime":      "Режими",
+    "methodology": "Методология",
+}
+
+
+def _render_journal(entries: list) -> str:
+    """Свързани journal entries — filter-нати relevant за текущия briefing."""
+    if not entries:
+        return ""
+
+    rows = []
+    for e in entries[:8]:  # cap at 8 most recent
+        topic_bg = _TOPIC_LABELS_BG.get(e.topic, e.topic)
+        status_bg = _STATUS_LABELS_BG.get(e.status, e.status)
+        tags_str = " · ".join(f"<code>{t}</code>" for t in e.tags) if e.tags else "—"
+        rows.append(f"""
+        <tr>
+          <td class="j-date">{e.date.isoformat()}</td>
+          <td class="j-topic">{topic_bg}</td>
+          <td class="j-title">{e.title}</td>
+          <td class="j-status">{status_bg}</td>
+          <td class="j-tags">{tags_str}</td>
+        </tr>
+        """)
+
+    return f"""
+<section class="journal">
+  <h2>Свързани журнал бележки</h2>
+  <p class="meta">{len(entries)} записа в журнала · показани {min(len(entries), 8)} най-скорошни</p>
+  <table class="journal-table">
+    <thead><tr>
+      <th>Дата</th>
+      <th>Тема</th>
+      <th>Заглавие</th>
+      <th>Статус</th>
+      <th>Тагове</th>
+    </tr></thead>
+    <tbody>{''.join(rows)}</tbody>
+  </table>
+</section>
+"""
+
+
 def _render_anomalies(snapshot: dict[str, pd.Series], top_n: int = 10) -> str:
     """Top anomalies — серии с |z|>2 от analysis/anomaly.py."""
     from analysis.anomaly import compute_anomalies
@@ -401,6 +457,13 @@ sub { font-size: 0.7em; color: #777; }
 .forward-table td.range { color: #777; font-size: 12px; font-variant-numeric: tabular-nums; }
 .forward-table td.n-cell { text-align: center; color: #888; }
 
+.journal-table td.j-date { font-variant-numeric: tabular-nums; color: #666; font-size: 13px; }
+.journal-table td.j-topic { color: #555; }
+.journal-table td.j-title { font-weight: 500; }
+.journal-table td.j-status { font-size: 12px; color: #555; }
+.journal-table td.j-tags code { background: #f0f1f3; padding: 2px 6px;
+                                 border-radius: 3px; font-size: 11px; }
+
 @media print {
   body { background: white; padding: 0; }
   section, .briefing-header { box-shadow: none; border: 1px solid #ddd; }
@@ -464,6 +527,10 @@ def generate_weekly_briefing(
         body_parts.append(_render_analogs(analog_bundle))
 
     body_parts.append(_render_anomalies(snapshot, top_n=top_anomalies_n))
+
+    if journal_entries:
+        body_parts.append(_render_journal(journal_entries))
+
     body_parts.append(_render_footer(today, len(snapshot), len(modules_results)))
 
     html = _skeleton(
