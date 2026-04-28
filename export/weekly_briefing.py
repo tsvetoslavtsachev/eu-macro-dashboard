@@ -1,50 +1,356 @@
 """
 export/weekly_briefing.py
 =========================
-HTML weekly briefing renderer за Eurozone.
+HTML weekly briefing renderer за Eurozone — v1 (Phase 3).
 
-Phase 0: STUB. Phase 3 ще реализира HTML template-а (BG labels) по
-образец на US `export/weekly_briefing.py`.
+Sections (BG):
+  1. Header — дата, composite score, общ режим
+  2. Executive Summary — 4-модулна таблица с lens scores и режими
+  3. Per-module блокове — composite, key readings, sparkline placeholder
+  4. Top Anomalies — серии с |z|>2 (от analysis/anomaly.py)
+  5. Footer — методология + caveats
 
-Очакван интерфейс:
-  def generate_weekly_briefing(
-      snapshot: dict[str, pd.Series],
-      output_path: str,
-      top_anomalies_n: int = 10,
-      today: Optional[date] = None,
-      state_dir: Optional[str] = "data/state",
-      persist_state: bool = True,
-      analog_bundle: Optional[AnalogBundle] = None,  # Phase 4
-      journal_entries: Optional[list[Any]] = None,   # Phase 5
-  ) -> str:                                          # path to generated HTML
+Phase 3.5+ ще добави:
+  - Breadth per lens (когато peer_groups имат ≥2 серии)
+  - Cross-lens divergence (когато CROSS_LENS_PAIRS се populate-нат)
+  - Non-consensus highlights (когато се add-нат tagged серии)
+  - WoW delta (след като state се persist-не)
 
-Sections (BG-labelled, identical structure със US):
-  1. Executive Summary — composite score + regime label (BG: "ЗДРАВ" etc.)
-  2. Седмична делта (WoW)
-  3. Cross-lens divergence (6 EA-specific pair-и)
-  4. Non-consensus readings
-  5. Аномалии (top 10)
-  6. Свързани журнал бележки (опционално, с --with-journal)
-  7. Footer — методология + revision_prone caveats
+Phase 4 — historical analogs.
+Phase 5 — journal entries.
 
-Self-contained HTML (inline CSS, no JS, без CDN).
+Self-contained HTML: inline CSS, без JS, без CDN.
 """
 from __future__ import annotations
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
 
+from config import MODULE_WEIGHTS, MACRO_REGIMES
+from core.scorer import get_regime
+
+
+# ─── Utility ─────────────────────────────────────────────────────
+
+def _fmt_score(s: Optional[float]) -> str:
+    return f"{s:.1f}" if s is not None else "—"
+
+
+def _fmt_pct(p: Optional[float]) -> str:
+    return f"{p:.0f}" if p is not None else "—"
+
+
+def _fmt_value(v: Any) -> str:
+    if v is None:
+        return "—"
+    if isinstance(v, (int, float)):
+        if abs(v) >= 1_000_000:
+            return f"{v/1_000_000:.2f}M"
+        if abs(v) >= 1000:
+            return f"{v:,.0f}"
+        return f"{v:.2f}"
+    return str(v)
+
+
+def _fmt_yoy(yoy: Optional[float]) -> str:
+    if yoy is None:
+        return "—"
+    sign = "+" if yoy >= 0 else ""
+    return f"{sign}{yoy:.1f}%"
+
+
+# ─── Composite calculation ───────────────────────────────────────
+
+def _compute_overall(modules_results: list[dict]) -> tuple[float, str, str]:
+    """Връща (composite, regime_label, regime_color) от модулните резултати."""
+    if not modules_results:
+        return 50.0, "—", "#888"
+    weighted = sum(
+        r["composite"] * MODULE_WEIGHTS.get(r["module"], 0)
+        for r in modules_results
+    )
+    total_w = sum(MODULE_WEIGHTS.get(r["module"], 0) for r in modules_results)
+    composite = round(weighted / total_w, 1) if total_w else 50.0
+    regime_label, regime_color = get_regime(composite, MACRO_REGIMES)
+    return composite, regime_label, regime_color
+
+
+# ─── Section renderers ───────────────────────────────────────────
+
+def _render_header(today: date, composite: float, regime: str, color: str, n_series: int) -> str:
+    return f"""
+<header class="briefing-header">
+  <h1>Седмичен макро брифинг — Еврозона</h1>
+  <p class="meta">{today.strftime('%d %B %Y')} · {n_series} серии</p>
+  <div class="overall-score" style="border-color: {color}">
+    <div class="score-value" style="color: {color}">{composite:.1f}</div>
+    <div class="score-label" style="color: {color}">{regime}</div>
+    <div class="score-subtitle">Композитен макро score (0–100)</div>
+  </div>
+</header>
+"""
+
+
+def _render_executive(modules_results: list[dict]) -> str:
+    rows = []
+    for r in modules_results:
+        score = r["composite"]
+        regime = r["regime"]
+        color = r["regime_color"]
+        n_indic = len(r.get("indicators", {}))
+        rows.append(f"""
+        <tr>
+          <td class="lens-name">{r['icon']} {r['label']}</td>
+          <td class="score-cell" style="color: {color}; border-left: 4px solid {color}">{score:.1f}</td>
+          <td class="regime-cell" style="color: {color}">{regime}</td>
+          <td class="weight-cell">{MODULE_WEIGHTS.get(r['module'], 0)*100:.0f}%</td>
+          <td class="n-cell">{n_indic}</td>
+        </tr>
+        """)
+    return f"""
+<section class="executive">
+  <h2>Резюме по сектори</h2>
+  <table class="lens-table">
+    <thead><tr>
+      <th>Сектор</th>
+      <th>Score</th>
+      <th>Режим</th>
+      <th>Тегло</th>
+      <th>Серии</th>
+    </tr></thead>
+    <tbody>{''.join(rows)}</tbody>
+  </table>
+</section>
+"""
+
+
+def _render_module_block(result: dict) -> str:
+    """Отделен блок за всеки модул със scores, key readings."""
+    indicators_rows = []
+    for kr in result.get("key_readings", []):
+        indicators_rows.append(f"""
+        <tr>
+          <td class="ind-label">{kr['label']}</td>
+          <td class="ind-value">{_fmt_value(kr['value'])}</td>
+          <td class="ind-yoy">{_fmt_yoy(kr.get('yoy'))}</td>
+          <td class="ind-pct">{_fmt_pct(kr['percentile'])}<sub>p</sub></td>
+          <td class="ind-score">{_fmt_score(kr['score'])}</td>
+          <td class="ind-date">{kr.get('date', '—')}</td>
+        </tr>
+        """)
+    if not indicators_rows:
+        indicators_rows = ['<tr><td colspan="6" class="empty">няма налични серии</td></tr>']
+
+    color = result["regime_color"]
+
+    return f"""
+<section class="module-block">
+  <h3>{result['icon']} {result['label']}</h3>
+  <div class="module-summary">
+    <span class="module-score" style="color: {color}">{result['composite']:.1f}</span>
+    <span class="module-regime" style="color: {color}">{result['regime']}</span>
+  </div>
+  <table class="indicators-table">
+    <thead><tr>
+      <th>Индикатор</th>
+      <th>Стойност</th>
+      <th>YoY</th>
+      <th>Percentile</th>
+      <th>Score</th>
+      <th>Дата</th>
+    </tr></thead>
+    <tbody>{''.join(indicators_rows)}</tbody>
+  </table>
+</section>
+"""
+
+
+def _render_anomalies(snapshot: dict[str, pd.Series], top_n: int = 10) -> str:
+    """Top anomalies — серии с |z|>2 от analysis/anomaly.py."""
+    from analysis.anomaly import compute_anomalies
+
+    if not snapshot:
+        return ""
+
+    try:
+        report = compute_anomalies(snapshot, top_n=top_n)
+    except Exception as e:
+        return f'<section><h2>Аномалии</h2><p class="empty">Грешка: {e}</p></section>'
+
+    if not report.top:
+        return f'<section><h2>Аномалии (|z|>2)</h2><p class="empty">Няма серии в опашката (|z|>2) сред {len(snapshot)} наблюдавани.</p></section>'
+
+    rows = []
+    for r in report.top:
+        direction_arrow = "▲" if r.direction == "up" else "▼"
+        new_extreme = " 🔥" if r.is_new_extreme else ""
+        rows.append(f"""
+        <tr>
+          <td class="anom-key">{r.series_key}</td>
+          <td class="anom-z">{direction_arrow} {r.z_score:+.2f}</td>
+          <td class="anom-extreme">{new_extreme}</td>
+        </tr>
+        """)
+    return f"""
+<section class="anomalies">
+  <h2>Аномалии (|z|&gt;2)</h2>
+  <p class="meta">Топ {len(report.top)} от {report.total_flagged} флагнати серии</p>
+  <table class="anom-table">
+    <thead><tr><th>Серия</th><th>Z-score</th><th>5Y extreme?</th></tr></thead>
+    <tbody>{''.join(rows)}</tbody>
+  </table>
+</section>
+"""
+
+
+def _render_footer(today: date, n_series: int, n_modules: int) -> str:
+    return f"""
+<footer>
+  <h2>Методология</h2>
+  <ul>
+    <li><strong>Source:</strong> ECB Statistical Data Warehouse + Eurostat REST API (без API ключ)</li>
+    <li><strong>Лещи:</strong> 5 (labor, inflation, growth, credit, ECB) — {n_modules} активни модула</li>
+    <li><strong>Score:</strong> percentile rank спрямо 1999+ исторически разпределение (EMU era)</li>
+    <li><strong>Композитен macro score:</strong> weighted average по config.MODULE_WEIGHTS
+        (inflation 30%, credit 20%, growth 20%, labor 15%, ECB 15%)</li>
+    <li><strong>Caveats:</strong> v1 — {n_series} серии; пo-къса EA история (1999) от US (1970+);
+        sovereign spread данните още не са derived (Phase 3.5)</li>
+  </ul>
+  <p class="generated">Генериран на {today.strftime('%d %B %Y, %H:%M')} ·
+     <a href="https://github.com/tsvetoslavtsachev/eu-macro-dashboard">eu-macro-dashboard</a></p>
+</footer>
+"""
+
+
+# ─── Skeleton ────────────────────────────────────────────────────
+
+_CSS = """
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 24px;
+       background: #f8f9fa; color: #1a1a1a; line-height: 1.5; }
+.container { max-width: 1100px; margin: 0 auto; }
+
+.briefing-header { background: white; border-radius: 12px; padding: 32px;
+                   margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.briefing-header h1 { margin: 0 0 8px 0; font-size: 28px; }
+.briefing-header .meta { color: #666; margin: 0 0 24px 0; font-size: 14px; }
+
+.overall-score { border-left: 8px solid; padding: 16px 24px; }
+.overall-score .score-value { font-size: 56px; font-weight: 700; line-height: 1; }
+.overall-score .score-label { font-size: 22px; font-weight: 600; margin-top: 4px;
+                              text-transform: uppercase; letter-spacing: 0.5px; }
+.overall-score .score-subtitle { font-size: 13px; color: #666; margin-top: 8px; }
+
+section { background: white; border-radius: 12px; padding: 24px;
+          margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+section h2 { margin: 0 0 16px 0; font-size: 18px; border-bottom: 2px solid #eee;
+             padding-bottom: 8px; }
+section h3 { margin: 0 0 12px 0; font-size: 16px; }
+section .meta { color: #666; font-size: 13px; margin-top: -8px; margin-bottom: 12px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; padding: 10px 12px; background: #f0f1f3;
+     font-weight: 600; font-size: 12px; text-transform: uppercase;
+     letter-spacing: 0.3px; color: #555; }
+td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+tr:last-child td { border-bottom: none; }
+td.score-cell, td.module-score, .module-score { font-weight: 700; font-size: 15px;
+                                                font-variant-numeric: tabular-nums; }
+td.regime-cell, .module-regime { font-weight: 600; text-transform: uppercase;
+                                  letter-spacing: 0.4px; font-size: 12px; }
+
+.module-block .module-summary { padding: 12px 0; display: flex; gap: 16px; align-items: baseline; }
+.module-block .module-score { font-size: 28px; }
+.module-block .module-regime { font-size: 14px; }
+
+.empty { color: #999; font-style: italic; padding: 16px; text-align: center; }
+
+footer { padding: 24px; color: #555; font-size: 13px; }
+footer h2 { font-size: 15px; margin-bottom: 8px; }
+footer ul { margin: 0 0 16px 0; padding-left: 20px; }
+footer li { margin-bottom: 4px; }
+footer .generated { color: #888; font-size: 12px; }
+footer a { color: #0066cc; text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+td.anom-z { font-variant-numeric: tabular-nums; font-weight: 600; }
+td.ind-value, td.ind-yoy, td.ind-pct, td.ind-score { font-variant-numeric: tabular-nums;
+                                                      text-align: right; }
+td.ind-date { color: #666; font-size: 12px; }
+sub { font-size: 0.7em; color: #777; }
+
+@media print {
+  body { background: white; padding: 0; }
+  section, .briefing-header { box-shadow: none; border: 1px solid #ddd; }
+}
+"""
+
+
+def _skeleton(title: str, body: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<title>{title}</title>
+<style>{_CSS}</style>
+</head>
+<body>
+<div class="container">
+{body}
+</div>
+</body>
+</html>
+"""
+
+
+# ─── Main entry ──────────────────────────────────────────────────
 
 def generate_weekly_briefing(
     snapshot: dict[str, pd.Series],
+    modules_results: list[dict],
     output_path: str,
-    top_anomalies_n: int = 10,
     today: Optional[date] = None,
-    state_dir: Optional[str] = "data/state",
-    persist_state: bool = True,
-    analog_bundle: Optional[Any] = None,
-    journal_entries: Optional[list[Any]] = None,
+    top_anomalies_n: int = 10,
+    analog_bundle: Optional[Any] = None,    # Phase 4
+    journal_entries: Optional[list[Any]] = None,  # Phase 5
 ) -> str:
-    """Генерира HTML briefing на български. Phase 3 implementation."""
-    raise NotImplementedError("export.weekly_briefing.generate_weekly_briefing — Phase 3")
+    """Генерира HTML briefing.
+
+    Args:
+        snapshot: {series_key: pd.Series} — fetched от adapters
+        modules_results: list от dict-ове върнати от modules.{labor,inflation,growth,ecb}.run
+        output_path: file path за HTML
+        today: дата за header (default = днес)
+        top_anomalies_n: брой top anomalies в списъка
+
+    Returns:
+        Абсолютния път до записания HTML.
+    """
+    today = today or date.today()
+
+    composite, regime, color = _compute_overall(modules_results)
+
+    body_parts = [
+        _render_header(today, composite, regime, color, len(snapshot)),
+        _render_executive(modules_results),
+    ]
+
+    for r in modules_results:
+        body_parts.append(_render_module_block(r))
+
+    body_parts.append(_render_anomalies(snapshot, top_n=top_anomalies_n))
+    body_parts.append(_render_footer(today, len(snapshot), len(modules_results)))
+
+    html = _skeleton(
+        title=f"EA Macro Briefing — {today.isoformat()}",
+        body="\n".join(body_parts),
+    )
+
+    output_path = str(output_path)
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    return output_path

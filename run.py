@@ -19,6 +19,7 @@ Phase 0 (текущ): skeleton. Всички handler-и raise NotImplementedErro
 import argparse
 import sys
 import logging
+import webbrowser
 from pathlib import Path
 from datetime import datetime
 
@@ -154,16 +155,49 @@ def cmd_modules(args) -> int:
 
 def cmd_briefing(args) -> int:
     """Weekly Briefing workflow. Phase 3 (analogs Phase 4, journal Phase 5)."""
+    from sources.ecb_adapter import EcbAdapter
+    from sources.eurostat_adapter import EurostatAdapter
     from export.weekly_briefing import generate_weekly_briefing
+    import modules.labor as labor_mod
+    import modules.inflation as inflation_mod
+    import modules.growth as growth_mod
+    import modules.ecb as ecb_mod
 
-    snapshot: dict = {}  # TODO Phase 3
+    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+    snapshot = _build_snapshot(adapters, force=args.refresh)
+
+    if not snapshot:
+        print("⚠ Snapshot е празен. Стартирай `python run.py --status --refresh` първо.")
+        return 1
+
+    print(f"\n📦 Snapshot: {len(snapshot)} серии заредени")
+    print("🔬 Изчисляване на модули...")
+
+    modules_results = []
+    for name, mod in [("labor", labor_mod), ("inflation", inflation_mod),
+                      ("growth", growth_mod), ("ecb", ecb_mod)]:
+        try:
+            modules_results.append(mod.run(snapshot))
+        except Exception as e:
+            print(f"   ⚠ {name}: грешка — {e}")
+
     output_path = f"{OUTPUT_DIR}/briefing_{datetime.now().strftime('%Y-%m-%d')}.html"
+    print(f"📝 Генериране на HTML → {output_path}")
+
     generate_weekly_briefing(
         snapshot=snapshot,
+        modules_results=modules_results,
         output_path=output_path,
         analog_bundle=None if not args.with_analogs else None,
         journal_entries=None if not args.with_journal else None,
     )
+
+    print(f"✓ Briefing готов: {output_path}")
+    if not args.no_browser:
+        try:
+            webbrowser.open(f"file://{Path(output_path).resolve()}")
+        except Exception:
+            pass
     return 0
 
 
