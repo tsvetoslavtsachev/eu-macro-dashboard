@@ -54,11 +54,13 @@ def _fmt_value(v: Any) -> str:
     return str(v)
 
 
-def _fmt_yoy(yoy: Optional[float]) -> str:
+def _fmt_yoy(yoy: Optional[float], unit: str = "%") -> str:
+    """Форматира YoY стойност. unit='pp' за rate series (HICP YoY, DFR),
+    unit='%' за level series (price index, count)."""
     if yoy is None:
         return "—"
     sign = "+" if yoy >= 0 else ""
-    return f"{sign}{yoy:.1f}%"
+    return f"{sign}{yoy:.1f}{unit}"
 
 
 # ─── Composite calculation ───────────────────────────────────────
@@ -134,7 +136,7 @@ def _render_module_block(result: dict) -> str:
         <tr>
           <td class="ind-label">{kr['label']}</td>
           <td class="ind-value">{_fmt_value(kr['value'])}</td>
-          <td class="ind-yoy">{_fmt_yoy(kr.get('yoy'))}</td>
+          <td class="ind-yoy">{_fmt_yoy(kr.get('yoy'), kr.get('yoy_unit', '%'))}</td>
           <td class="ind-pct">{_fmt_pct(kr['percentile'])}<sub>p</sub></td>
           <td class="ind-score">{_fmt_score(kr['score'])}</td>
           <td class="ind-date">{kr.get('date', '—')}</td>

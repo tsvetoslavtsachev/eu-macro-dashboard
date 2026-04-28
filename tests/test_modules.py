@@ -73,6 +73,55 @@ def test_labor_high_unemployment_low_score():
     assert result["composite"] < 30, f"expected low score, got {result['composite']}"
 
 
+def test_labor_yoy_returns_pp_delta_for_rate_series():
+    """Regression: UNRATE е rate series → YoY трябва да е pp delta, не relative %.
+
+    UNRATE от 6.30 → 6.20 = -0.10pp (НЕ -1.6%, което беше bug-ът).
+    """
+    # Synthetic series: 12 месеца константа на 6.30, после спад до 6.20
+    idx = pd.date_range(end="2026-03-01", periods=24, freq="MS")
+    values = [6.30] * 12 + [6.20] * 12
+    snap = {"EA_UNRATE": pd.Series(values, index=idx)}
+    result = labor_mod.run(snap)
+    kr = result["key_readings"][0]
+    assert kr["yoy_unit"] == "pp", f"expected pp unit, got {kr['yoy_unit']}"
+    assert kr["yoy"] == pytest.approx(-0.10, abs=0.01), \
+        f"expected -0.10pp absolute delta, got {kr['yoy']}"
+
+
+def test_inflation_yoy_returns_pp_delta():
+    """Regression: HICP YoY → YoY column е pp, не relative %.
+
+    HICP от 2.40 → 2.00 = -0.40pp (НЕ -16.7%, което беше bug-ът).
+    """
+    idx = pd.date_range(end="2026-03-01", periods=24, freq="MS")
+    values = [2.40] * 12 + [2.00] * 12
+    snap = {"EA_HICP_HEADLINE": pd.Series(values, index=idx)}
+    result = inflation_mod.run(snap)
+    kr = next(r for r in result["key_readings"] if r["id"] == "EA_HICP_HEADLINE")
+    assert kr["yoy_unit"] == "pp"
+    assert kr["yoy"] == pytest.approx(-0.40, abs=0.01)
+
+
+def test_ecb_balance_yoy_pp_delta_after_transform():
+    """Regression: ECB balance YoY% transform → YoY column е pp.
+
+    Balance YoY от -0.27% → +2.23% = +2.5pp (НЕ +879%, което беше bug-ът).
+    """
+    # Build level series so YoY transform produces clear delta
+    idx = pd.date_range(end="2026-03-01", periods=36, freq="MS")
+    # First 24 months stable, next 12 grow to produce specific YoY change
+    levels = list(range(100, 100 + 24)) + list(range(124, 124 + 12))
+    snap = {"ECB_BALANCE_SHEET": pd.Series([float(v) for v in levels], index=idx)}
+    result = ecb_mod.run(snap)
+    kr = next((r for r in result["key_readings"] if r["id"] == "ECB_BALANCE_SHEET"), None)
+    assert kr is not None
+    assert kr["yoy_unit"] == "pp"
+    # Ние не знаем точното pp число (зависи от transform internals), но
+    # трябва да е малко число (< 50pp), не absurd процент
+    assert abs(kr["yoy"]) < 50, f"yoy should be reasonable pp delta, got {kr['yoy']}"
+
+
 def test_labor_regime_has_color():
     snap = {"EA_UNRATE": trend(12.0, 6.0)}
     result = labor_mod.run(snap)

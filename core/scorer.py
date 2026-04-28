@@ -54,9 +54,17 @@ def score_series(
     history_start: str = "1999-01-01",
     invert: bool = False,
     name: str = "",
+    is_rate: bool = False,
 ) -> dict:
     """Главна функция. invert=True: по-висока стойност → по-нисък score
-    (напр. безработица: висока = лошо за пазара на труда)."""
+    (напр. безработица: висока = лошо за пазара на труда).
+
+    Args:
+        is_rate: True ако series-ите са rate / percentage / YoY % (т.е.
+            стойността вече е в %). Тогава YoY промяната се връща като
+            absolute pp delta вместо relative % change. Това е стандартното
+            макро convention (HICP YoY от 2.40% → 2.00% = -0.40pp, не -16.7%).
+    """
     series = series.dropna()
     if len(series) == 0:
         return _empty_score(name)
@@ -72,7 +80,8 @@ def score_series(
     raw_score = pct if not invert else (100.0 - pct)
     score = round(raw_score, 1)
 
-    yoy = _calc_yoy(series)
+    yoy = _calc_change(series, as_pp=is_rate)
+    yoy_unit = "pp" if is_rate else "%"
 
     return {
         "name": name or series.name or "unknown",
@@ -82,6 +91,7 @@ def score_series(
         "current_value": round(current_val, 4),
         "last_date": last_date,
         "yoy_change": yoy,
+        "yoy_unit": yoy_unit,
         "invert": invert,
         "history_n": len(history),
     }
@@ -150,7 +160,17 @@ def build_historical_context(
 
 # ─── helpers ─────────────────────────────────────────────────────
 
-def _calc_yoy(series: pd.Series) -> Optional[float]:
+def _calc_change(series: pd.Series, as_pp: bool = False) -> Optional[float]:
+    """YoY промяна между current и стойност отпреди година.
+
+    Args:
+        as_pp: ако True → връща absolute pp delta (cur − old);
+               ако False → връща relative % change ((cur − old) / |old| * 100).
+
+    pp mode се ползва за rate/percentage series (UNRATE, HICP YoY, DFR), където
+    relative % change на percentage е объркваща (HICP от 2.4% → 2.0% YoY е
+    "-0.4pp", не "-16.7%").
+    """
     try:
         now = series.index[-1]
         year_ago = now - pd.DateOffset(years=1)
@@ -159,11 +179,17 @@ def _calc_yoy(series: pd.Series) -> Optional[float]:
             return None
         old_val = float(past.iloc[-1])
         cur_val = float(series.iloc[-1])
+        if as_pp:
+            return round(cur_val - old_val, 2)
         if old_val == 0:
             return None
         return round((cur_val - old_val) / abs(old_val) * 100, 2)
     except Exception:
         return None
+
+
+# Backward-compat alias (старият export name)
+_calc_yoy = _calc_change
 
 
 def _empty_score(name: str) -> dict:
@@ -175,6 +201,7 @@ def _empty_score(name: str) -> dict:
         "current_value": None,
         "last_date": None,
         "yoy_change": None,
+        "yoy_unit": "%",
         "invert": False,
         "history_n": 0,
     }

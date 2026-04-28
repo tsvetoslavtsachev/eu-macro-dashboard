@@ -26,9 +26,9 @@ from config import HISTORY_START
 
 # ─── Catalog ─────────────────────────────────────────────────────
 SERIES = {
-    "EA_HICP_HEADLINE": {"label": "HICP всички продукти (YoY %)", "invert": False},
-    "EA_HICP_CORE":     {"label": "HICP базова (excl. енергия и храни, YoY %)", "invert": False},
-    "EA_HICP_SERVICES": {"label": "HICP услуги (YoY %)", "invert": False},
+    "EA_HICP_HEADLINE": {"label": "HICP всички продукти (YoY %)", "invert": False, "is_rate": True},
+    "EA_HICP_CORE":     {"label": "HICP базова (excl. енергия и храни, YoY %)", "invert": False, "is_rate": True},
+    "EA_HICP_SERVICES": {"label": "HICP услуги (YoY %)", "invert": False, "is_rate": True},
 }
 
 # Composite weights — services и core тежат повече от headline (ECB practice:
@@ -57,6 +57,7 @@ def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
                 history_start=HISTORY_START,
                 invert=meta["invert"],
                 name=meta["label"],
+                is_rate=meta.get("is_rate", False),
             )
 
     composite = _composite(indicators, COMPOSITE_SERIES, COMPOSITE_WEIGHTS)
@@ -111,6 +112,7 @@ def _key_readings(indicators: dict) -> list[dict]:
                 "value": s["current_value"],
                 "date": s["last_date"],
                 "yoy": s["yoy_change"],
+                "yoy_unit": s.get("yoy_unit", "%"),
                 "percentile": s["percentile"],
                 "score": s["score"],
             })

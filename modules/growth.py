@@ -28,6 +28,7 @@ SERIES = {
         "label": "Промишлено производство (EA-21, YoY %)",
         "invert": False,
         "transform": "yoy_pct",  # raw е level индекс — превръщаме в YoY %
+        "is_rate": True,         # след transform е YoY % (rate, не level)
     },
 }
 
@@ -76,6 +77,7 @@ def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
                     history_start=HISTORY_START,
                     invert=meta["invert"],
                     name=meta["label"],
+                    is_rate=meta.get("is_rate", False),
                 )
 
     composite = _composite(indicators, COMPOSITE_SERIES, COMPOSITE_WEIGHTS)
@@ -130,6 +132,7 @@ def _key_readings(indicators: dict) -> list[dict]:
                 "value": s["current_value"],
                 "date": s["last_date"],
                 "yoy": s["yoy_change"],
+                "yoy_unit": s.get("yoy_unit", "%"),
                 "percentile": s["percentile"],
                 "score": s["score"],
             })

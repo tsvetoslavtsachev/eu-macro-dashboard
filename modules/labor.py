@@ -25,7 +25,7 @@ from config import HISTORY_START
 
 # ─── Catalog отговаря на Phase 1 (catalog/series.py) ─────────────
 SERIES = {
-    "EA_UNRATE": {"label": "Безработица (EA-21, %)", "invert": True},
+    "EA_UNRATE": {"label": "Безработица (EA-21, %)", "invert": True, "is_rate": True},
 }
 
 CYCLICAL_SERIES = ["EA_UNRATE"]
@@ -59,6 +59,7 @@ def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
                 history_start=HISTORY_START,
                 invert=meta["invert"],
                 name=meta["label"],
+                is_rate=meta.get("is_rate", False),
             )
 
     composite = _composite(indicators, CYCLICAL_SERIES, CYCLICAL_WEIGHTS)
@@ -113,6 +114,7 @@ def _key_readings(indicators: dict) -> list[dict]:
                 "value": s["current_value"],
                 "date": s["last_date"],
                 "yoy": s["yoy_change"],
+                "yoy_unit": s.get("yoy_unit", "%"),
                 "percentile": s["percentile"],
                 "score": s["score"],
             })
