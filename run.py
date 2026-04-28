@@ -81,11 +81,82 @@ def cmd_status(args) -> int:
     return 0
 
 
+def _build_snapshot(adapters: dict, force: bool = False) -> dict:
+    """Сглобява {series_key: pd.Series} от всички adapter-и (cache-only ако force=False)."""
+    from catalog.series import SERIES_CATALOG, series_by_source
+
+    snapshot: dict = {}
+    for source_name, adapter in adapters.items():
+        specs = [
+            {"key": s["_key"], "source_id": s["id"], "release_schedule": s["release_schedule"]}
+            for s in series_by_source(source_name)
+        ]
+        if force:
+            results = adapter.fetch_many(specs, force=True)
+        else:
+            results = adapter.get_snapshot([s["key"] for s in specs])
+        snapshot.update(results)
+    return snapshot
+
+
+def cmd_modules(args) -> int:
+    """Модулен summary: оценява всеки lens (Phase 2). Console output."""
+    from sources.ecb_adapter import EcbAdapter
+    from sources.eurostat_adapter import EurostatAdapter
+    import modules.labor as labor_mod
+    import modules.inflation as inflation_mod
+    import modules.growth as growth_mod
+    import modules.ecb as ecb_mod
+    from config import MODULE_WEIGHTS
+
+    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+    snapshot = _build_snapshot(adapters, force=args.refresh)
+
+    if not snapshot:
+        print("⚠ Snapshot е празен. Стартирай `python run.py --status --refresh` първо.")
+        return 1
+
+    print(f"\n📦 Snapshot: {len(snapshot)} серии заредени")
+    print()
+
+    modules_to_run = [
+        ("labor",     labor_mod),
+        ("inflation", inflation_mod),
+        ("growth",    growth_mod),
+        ("ecb",       ecb_mod),
+    ]
+
+    results: list[dict] = []
+    for name, mod in modules_to_run:
+        try:
+            result = mod.run(snapshot)
+        except Exception as e:
+            print(f"  ❌ {name}: грешка — {e}")
+            continue
+        results.append(result)
+        score = result["composite"]
+        regime = result["regime"]
+        n_indic = len(result.get("indicators", {}))
+        print(f"  {result['icon']} {result['label']:25}  score={score:5.1f}  {regime:25}  ({n_indic} серии)")
+
+    # Composite macro score
+    weighted = sum(
+        r["composite"] * MODULE_WEIGHTS.get(r["module"], 0)
+        for r in results
+    )
+    total_weight = sum(MODULE_WEIGHTS.get(r["module"], 0) for r in results)
+    overall = round(weighted / total_weight, 1) if total_weight else 50.0
+    print()
+    print(f"  📊 Композитен Macro Score: {overall:.1f}")
+
+    return 0
+
+
 def cmd_briefing(args) -> int:
     """Weekly Briefing workflow. Phase 3 (analogs Phase 4, journal Phase 5)."""
     from export.weekly_briefing import generate_weekly_briefing
 
-    snapshot: dict = {}  # TODO Phase 1: fetch from adapters
+    snapshot: dict = {}  # TODO Phase 3
     output_path = f"{OUTPUT_DIR}/briefing_{datetime.now().strftime('%Y-%m-%d')}.html"
     generate_weekly_briefing(
         snapshot=snapshot,
@@ -102,6 +173,8 @@ def main() -> int:
     )
     parser.add_argument("--status", action="store_true",
                         help="Data Status Screen (Phase 1)")
+    parser.add_argument("--modules", action="store_true",
+                        help="Modules summary — labor/inflation/growth/ecb (Phase 2)")
     parser.add_argument("--briefing", action="store_true",
                         help="Weekly Briefing (Phase 3)")
     parser.add_argument("--with-analogs", action="store_true",
@@ -124,6 +197,8 @@ def main() -> int:
 
     if args.status:
         return cmd_status(args)
+    if args.modules:
+        return cmd_modules(args)
     if args.briefing:
         return cmd_briefing(args)
 

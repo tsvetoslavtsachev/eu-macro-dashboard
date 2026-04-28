@@ -3,29 +3,115 @@ modules/inflation.py
 ====================
 Inflation lens за Eurozone.
 
-Phase 0: STUB. Phase 2 ще реализира scoring логиката.
+Phase 2: оценява HICP_HEADLINE / HICP_CORE / HICP_SERVICES.
+ЕЦБ-ова target = 2% medium-term. Composite = percentile spectrum (без invert),
+тоест високи стойности дават висок score = "елевирана инфлация".
 
-EA series planning (Phase 1 catalog):
-  EA_HICP_HEADLINE       — HICP all items YoY (Eurostat prc_hicp_manr)
-  EA_HICP_CORE           — HICP excl energy & food YoY (Eurostat prc_hicp_manr subset)
-  EA_HICP_SERVICES       — HICP services component YoY
-  EA_HICP_GOODS          — HICP non-energy industrial goods YoY
-  EA_HICP_ENERGY         — HICP energy YoY (volatile, separate)
-  EA_INFLATION_SWAPS_5Y5Y — ECB 5Y5Y inflation swap rate (forward expectations)
-  EA_SPF_INFLATION_2Y    — ECB Survey of Professional Forecasters 2Y expectation
-  EA_PPI                 — Producer prices (Eurostat sts_inppd_m)
-  EA_NEGOTIATED_WAGES_YOY — ECB indicator (двойно tagged: labor + inflation)
+Различно framing от labor (където висок score = здрав labor):
+  Тук висок score = висока инфлация = проблем за ЕЦБ.
+  Регимите отразяват това: < 20 → дефлационен риск, > 80 → остра инфлация.
 
-Pattern: огледало на US modules/inflation.py.
+Pattern: snapshot interface.
 """
 from __future__ import annotations
+from typing import Any
+
+import pandas as pd
+
+from core.scorer import (
+    score_series, build_sparkline, build_historical_context, get_regime,
+)
+from config import HISTORY_START
 
 
-SERIES: dict[str, dict] = {
-    # TODO Phase 2
+# ─── Catalog ─────────────────────────────────────────────────────
+SERIES = {
+    "EA_HICP_HEADLINE": {"label": "HICP всички продукти (YoY %)", "invert": False},
+    "EA_HICP_CORE":     {"label": "HICP базова (excl. енергия и храни, YoY %)", "invert": False},
+    "EA_HICP_SERVICES": {"label": "HICP услуги (YoY %)", "invert": False},
 }
 
+# Composite weights — services и core тежат повече от headline (ECB practice:
+# подложни компоненти > volatile headline)
+COMPOSITE_SERIES  = ["EA_HICP_HEADLINE", "EA_HICP_CORE", "EA_HICP_SERVICES"]
+COMPOSITE_WEIGHTS = [0.30,                0.40,           0.30]
 
-def run(client) -> dict:
-    """Изчислява Inflation lens composite за EA. Phase 2 implementation."""
-    raise NotImplementedError("modules.inflation.run — Phase 2")
+
+# Регими: висок percentile = висока инфлация в исторически контекст
+REGIMES = [
+    (80, "ОСТРА ИНФЛАЦИЯ",    "#d50000"),  # rare top-of-history pressure
+    (65, "ЕЛЕВИРАНА",         "#ff6d00"),
+    (45, "БЛИЗО ДО ЦЕЛТА",    "#69f0ae"),
+    (30, "ПОД ЦЕЛТА",         "#ffd600"),
+    (0,  "ДЕФЛАЦИОНЕН РИСК",  "#0091ea"),
+]
+
+
+def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
+    """Изчислява Inflation lens за EA."""
+    indicators: dict[str, dict] = {}
+    for sid, meta in SERIES.items():
+        if sid in snapshot and not snapshot[sid].empty:
+            indicators[sid] = score_series(
+                snapshot[sid],
+                history_start=HISTORY_START,
+                invert=meta["invert"],
+                name=meta["label"],
+            )
+
+    composite = _composite(indicators, COMPOSITE_SERIES, COMPOSITE_WEIGHTS)
+    regime_label, regime_color = get_regime(composite, REGIMES)
+
+    sparklines: dict[str, dict] = {}
+    hist_context: dict[str, dict] = {}
+    for sid in SERIES:
+        if sid in snapshot and not snapshot[sid].empty:
+            sparklines[sid] = build_sparkline(snapshot[sid], months=36)
+            hist_context[sid] = build_historical_context(
+                snapshot[sid],
+                float(snapshot[sid].iloc[-1]),
+                history_start=HISTORY_START,
+            )
+
+    return {
+        "module": "inflation",
+        "label": "Инфлация",
+        "icon": "🔥",
+        "scores": {
+            "composite_pressure": {"score": composite, "label": "Композитен натиск"},
+        },
+        "composite": composite,
+        "regime": regime_label,
+        "regime_color": regime_color,
+        "indicators": indicators,
+        "sparklines": sparklines,
+        "historical_context": hist_context,
+        "key_readings": _key_readings(indicators),
+    }
+
+
+# ─── Helpers ─────────────────────────────────────────────────────
+
+def _composite(scores: dict, series_list: list, weights: list) -> float:
+    vals = [scores[s]["score"] for s in series_list if s in scores]
+    wts = [weights[i] for i, s in enumerate(series_list) if s in scores]
+    if not vals:
+        return 50.0
+    return round(sum(v * w for v, w in zip(vals, wts)) / sum(wts), 1)
+
+
+def _key_readings(indicators: dict) -> list[dict]:
+    out = []
+    for sid in SERIES:
+        if sid in indicators:
+            s = indicators[sid]
+            out.append({
+                "id": sid,
+                "label": s["name"],
+                "value": s["current_value"],
+                "date": s["last_date"],
+                "yoy": s["yoy_change"],
+                "percentile": s["percentile"],
+                "score": s["score"],
+            })
+    return out
