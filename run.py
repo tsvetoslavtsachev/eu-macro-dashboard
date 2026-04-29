@@ -84,7 +84,7 @@ def cmd_status(args) -> int:
 
 def _build_snapshot(adapters: dict, force: bool = False) -> dict:
     """Сглобява {series_key: pd.Series} от всички adapter-и (cache-only ако force=False)."""
-    from catalog.series import SERIES_CATALOG, series_by_source
+    from catalog.series import series_by_source
 
     snapshot: dict = {}
     for source_name, adapter in adapters.items():
@@ -98,6 +98,44 @@ def _build_snapshot(adapters: dict, force: bool = False) -> dict:
             results = adapter.get_snapshot([s["key"] for s in specs])
         snapshot.update(results)
     return snapshot
+
+
+def _auto_refresh_stale(adapters: dict, verbose: bool = True) -> int:
+    """Smart auto-refresh: fetch-ва само stale серии (TTL изтекъл).
+
+    Mirror на US pattern. Влиза в briefing flow без --refresh флаг — ако
+    има stale серии, smart refresh ги прицелва. Force refresh е separate.
+
+    Returns: брой stale серии, които са били refresh-нати.
+    """
+    from catalog.series import series_by_source
+
+    total_stale = 0
+    total_specs = 0
+    for source_name, adapter in adapters.items():
+        all_specs = [
+            {"key": s["_key"], "source_id": s["id"], "release_schedule": s["release_schedule"]}
+            for s in series_by_source(source_name)
+        ]
+        total_specs += len(all_specs)
+        stale_specs = adapter.find_stale_specs(all_specs)
+        if stale_specs:
+            total_stale += len(stale_specs)
+            if verbose:
+                print(f"   {source_name}: {len(stale_specs)}/{len(all_specs)} stale — fetching...")
+            adapter.fetch_many(stale_specs, force=False)
+            adapter.save_cache()
+            fails = adapter.last_fetch_failures()
+            if fails and verbose:
+                print(f"   ⚠ {source_name}: {len(fails)} failed — {', '.join(fails[:5])}")
+
+    if verbose:
+        n_fresh = total_specs - total_stale
+        if total_stale == 0:
+            print(f"📦 Cache: {n_fresh}/{total_specs} fresh — всичко up-to-date.")
+        else:
+            print(f"📦 Cache: {n_fresh}/{total_specs} fresh; {total_stale} stale — auto-refresh complete.")
+    return total_stale
 
 
 def cmd_modules(args) -> int:
@@ -153,8 +191,44 @@ def cmd_modules(args) -> int:
     return 0
 
 
+def cmd_refresh_only(args) -> int:
+    """Pure data refresh без HTML output. Phase 7."""
+    from sources.ecb_adapter import EcbAdapter
+    from sources.eurostat_adapter import EurostatAdapter
+
+    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+
+    if args.refresh:
+        print("🔄 --refresh-only --refresh: force fetch на всички серии...")
+        from catalog.series import series_by_source
+        for source_name, adapter in adapters.items():
+            specs = [
+                {"key": s["_key"], "source_id": s["id"], "release_schedule": s["release_schedule"]}
+                for s in series_by_source(source_name)
+            ]
+            print(f"   {source_name}: fetching {len(specs)} series...")
+            adapter.fetch_many(specs, force=True)
+            adapter.save_cache()
+            fails = adapter.last_fetch_failures()
+            if fails:
+                print(f"   ⚠ {source_name}: {len(fails)} failed: {', '.join(fails)}")
+        print("✓ Force refresh complete.")
+    else:
+        print("🔄 --refresh-only: smart refresh на stale серии...")
+        n_stale = _auto_refresh_stale(adapters, verbose=True)
+        if n_stale == 0:
+            print("✓ Никаква серия не е stale; cache е up-to-date.")
+        else:
+            print(f"✓ Smart refresh complete ({n_stale} stale серии fetch-нати).")
+    return 0
+
+
 def cmd_briefing(args) -> int:
-    """Weekly Briefing workflow. Phase 3 (analogs Phase 4, journal Phase 5)."""
+    """Weekly Briefing workflow. Phase 3 (analogs Phase 4, journal Phase 5).
+
+    Phase 7: auto-refresh kicks in без --refresh флаг — fetch-ва само stale.
+    --refresh флагът все още прави force-refresh на всички.
+    """
     from sources.ecb_adapter import EcbAdapter
     from sources.eurostat_adapter import EurostatAdapter
     from export.weekly_briefing import generate_weekly_briefing
@@ -164,6 +238,11 @@ def cmd_briefing(args) -> int:
     import modules.ecb as ecb_mod
 
     adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+
+    # Phase 7: auto-refresh stale серии преди briefing (без force flag)
+    if not args.refresh:
+        _auto_refresh_stale(adapters, verbose=True)
+
     snapshot = _build_snapshot(adapters, force=args.refresh)
 
     if not snapshot:
@@ -233,8 +312,10 @@ def main() -> int:
                         help="Data Status Screen (Phase 1)")
     parser.add_argument("--modules", action="store_true",
                         help="Modules summary — labor/inflation/growth/ecb (Phase 2)")
+    parser.add_argument("--refresh-only", action="store_true",
+                        help="Refresh данни без да генерира briefing (Phase 7)")
     parser.add_argument("--briefing", action="store_true",
-                        help="Weekly Briefing (Phase 3)")
+                        help="Weekly Briefing (Phase 3) — auto-refresh stale series без --refresh")
     parser.add_argument("--with-analogs", action="store_true",
                         help="Включи historical analogs секция (Phase 4)")
     parser.add_argument("--with-journal", action="store_true",
@@ -255,6 +336,8 @@ def main() -> int:
 
     if args.status:
         return cmd_status(args)
+    if args.refresh_only:
+        return cmd_refresh_only(args)
     if args.modules:
         return cmd_modules(args)
     if args.briefing:

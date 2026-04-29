@@ -331,8 +331,16 @@ def _render_journal(entries: list) -> str:
 
 
 def _render_anomalies(snapshot: dict[str, pd.Series], top_n: int = 10) -> str:
-    """Top anomalies — серии с |z|>2 от analysis/anomaly.py."""
+    """Top anomalies — серии с |z|>2 от analysis/anomaly.py.
+
+    Phase 7: добавени са две нови колони — стойност (raw) и Δ (промяна),
+    форматирани с display-by-type logic от core/display.py.
+    """
     from analysis.anomaly import compute_anomalies
+    from catalog.series import SERIES_CATALOG
+    from core.display import (
+        change_kind, latest_change, fmt_change, fmt_value,
+    )
 
     if not snapshot:
         return ""
@@ -349,9 +357,27 @@ def _render_anomalies(snapshot: dict[str, pd.Series], top_n: int = 10) -> str:
     for r in report.top:
         direction_arrow = "▲" if r.direction == "up" else "▼"
         new_extreme = " 🔥" if r.is_new_extreme else ""
+
+        # Display-by-type: value + Δ
+        meta = SERIES_CATALOG.get(r.series_key, {})
+        kind = change_kind(r.series_key, meta)
+
+        raw_series = snapshot.get(r.series_key)
+        cur_val_str = "—"
+        delta_str = "—"
+        if raw_series is not None and not raw_series.empty:
+            cur_val_str = fmt_value(raw_series.dropna().iloc[-1], digits=3)
+            # Δ = month-over-month за monthly+ schedule, иначе weekly
+            schedule = meta.get("release_schedule", "monthly")
+            periods = {"weekly": 4, "monthly": 1, "quarterly": 1, "annually": 1}.get(schedule, 1)
+            delta_val = latest_change(raw_series, kind, periods=periods)
+            delta_str = fmt_change(delta_val, kind)
+
         rows.append(f"""
         <tr>
           <td class="anom-key">{r.series_key}</td>
+          <td class="anom-value">{cur_val_str}</td>
+          <td class="anom-delta">{delta_str}</td>
           <td class="anom-z">{direction_arrow} {r.z_score:+.2f}</td>
           <td class="anom-extreme">{new_extreme}</td>
         </tr>
@@ -359,9 +385,15 @@ def _render_anomalies(snapshot: dict[str, pd.Series], top_n: int = 10) -> str:
     return f"""
 <section class="anomalies">
   <h2>Аномалии (|z|&gt;2)</h2>
-  <p class="meta">Топ {len(report.top)} от {report.total_flagged} флагнати серии</p>
+  <p class="meta">Топ {len(report.top)} от {report.total_flagged} флагнати серии · стойност+Δ форматирани display-by-type</p>
   <table class="anom-table">
-    <thead><tr><th>Серия</th><th>Z-score</th><th>5Y extreme?</th></tr></thead>
+    <thead><tr>
+      <th>Серия</th>
+      <th class="num">Стойност</th>
+      <th class="num">Δ</th>
+      <th class="num">Z-score</th>
+      <th>5Y extreme?</th>
+    </tr></thead>
     <tbody>{''.join(rows)}</tbody>
   </table>
 </section>
@@ -439,6 +471,9 @@ footer a { color: #0066cc; text-decoration: none; }
 footer a:hover { text-decoration: underline; }
 
 td.anom-z { font-variant-numeric: tabular-nums; font-weight: 600; }
+td.anom-value, td.anom-delta { font-variant-numeric: tabular-nums; text-align: right; }
+td.anom-delta { font-weight: 600; }
+.anom-table th.num, .indicators-table th.num, .forward-table th.num { text-align: right; }
 td.ind-value, td.ind-yoy, td.ind-pct, td.ind-score { font-variant-numeric: tabular-nums;
                                                       text-align: right; }
 td.ind-date { color: #666; font-size: 12px; }
