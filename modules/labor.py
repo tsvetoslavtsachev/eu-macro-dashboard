@@ -25,11 +25,27 @@ from config import HISTORY_START
 
 # ─── Catalog отговаря на Phase 1 (catalog/series.py) ─────────────
 SERIES = {
-    "EA_UNRATE": {"label": "Безработица (EA-21, %)", "invert": True, "is_rate": True},
+    "EA_UNRATE": {
+        "label": "Безработица (EA-21, %)",
+        "invert": True,
+        "is_rate": True,
+    },
+    "EA_LFS_EMP": {
+        "label": "Заетост 20-64г (LFS, % от популация)",
+        "invert": False,   # висока employment rate = здрав labor
+        "is_rate": True,
+    },
+    "EA_EMPLOYMENT_EXP": {
+        "label": "Очаквания за заетост (3m напред)",
+        "invert": False,   # положителни очаквания = здрав labor
+        "is_rate": False,  # balance index, не percentage
+    },
 }
 
-CYCLICAL_SERIES = ["EA_UNRATE"]
-CYCLICAL_WEIGHTS = [1.0]
+# UNRATE доминира (lagging но broadly available); LFS_EMP е structural;
+# EMPLOYMENT_EXP е forward (но кратка история — малко тегло)
+CYCLICAL_SERIES  = ["EA_UNRATE", "EA_LFS_EMP", "EA_EMPLOYMENT_EXP"]
+CYCLICAL_WEIGHTS = [0.50,         0.35,          0.15]
 
 
 # Регими (BG), inverted convention: висок score = здрав labor market

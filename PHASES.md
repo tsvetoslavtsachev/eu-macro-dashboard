@@ -201,12 +201,47 @@ python run.py --briefing --with-analogs --with-journal
 
 ---
 
-## Roadmap отвъд v0.2.0
+## Phase 5.5: +13 нови серии (post-v0.2.0)
+
+**Цел:** Утрояване на catalog-а от 17 → 30 серии за по-богат анализ.
+
+13 нови серии:
+
+Labor (+2): EA_LFS_EMP (employment rate 20-64г, 2009+), EA_EMPLOYMENT_EXP (12mo).
+
+Growth (+9): EA_RETAIL_VOL (2000+), EA_BUILDING_PRODUCTION (1995+), EA_PERMIT_DW (2005+),
+EA_GDP_QOQ (1995+, quarterly), EA_ESI (12mo), EA_INDUSTRY_CONF / EA_CONSTRUCTION_CONF /
+EA_RETAIL_CONF (12mo limited), EA_CONSUMER_CONF (1985+, full history).
+
+Credit (+2): EA_BANK_LOANS_NFC, EA_BANK_LOANS_HH (ECB BSI, 2004+, 267 obs).
+
+Lens distribution: labor 3 / inflation 4 / growth 10 / credit 9 / ecb 4 (total 30).
+
+Module updates:
+- modules/growth.py: 1 → 5 series composite (IP/Retail/Construction/GDP/ESI с weights 0.30/0.25/0.15/0.20/0.10)
+- modules/labor.py: 1 → 3 series composite (UNRATE/LFS_EMP/EmpExp с weights 0.50/0.35/0.15)
+
+Live impact (2026-04-29):
+
+| Module | Преди (v0.2) | След | Comment |
+|---|---:|---:|---|
+| Labor | 99.7 ГОРЕЩ | 84.3 ГОРЕЩ | По-балансиран signal с LFS structural data |
+| Growth | 28.5 РЕЦЕСИЯ | 34.1 СВИВАНЕ | Retail/GDP nuance (не толкова bleak) |
+| ECB | 68.0 РЕСТРИКТИВНА | 66.4 РЕСТРИКТИВНА | Малко изменение |
+| Composite | 65.5 ЗДРАВ | 63.7 ЗДРАВ | По-точен с 5x повече signals |
+
+Research findings:
+- Eurostat geo код варира по dataset; full-history sentiment е в ei_bsco_m (BS-CSMCI) от 1985
+- teibs* datasets имат само 12 месечна история (limited)
+- ECB BSI dataset съдържа bank lending growth rates (2004+, 267 obs)
+
+---
+
+## Roadmap отвъд v0.3.0
 
 | Priority | Item | Estimated effort |
 |---|---|---|
 | High | Populate `catalog/cross_lens_pairs.py` (стагфлация тест, ECB transmission) | 1 session |
-| High | Add 10+ серии (PMI ESI subindices, retail trade, building permits, employment LFS) | 1-2 sessions |
 | Medium | WoW delta активиране в run.py + briefing | 0.5 session |
 | Medium | `analysis/executive.py` Fed→ECB narrative rewrite | 0.5 session |
 | Medium | `analysis/guardrails.py` US→EA signal rewrite | 0.5 session |

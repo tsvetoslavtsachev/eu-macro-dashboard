@@ -27,13 +27,39 @@ SERIES = {
     "EA_IP": {
         "label": "Промишлено производство (EA-21, YoY %)",
         "invert": False,
-        "transform": "yoy_pct",  # raw е level индекс — превръщаме в YoY %
-        "is_rate": True,         # след transform е YoY % (rate, не level)
+        "transform": "yoy_pct",
+        "is_rate": True,
+    },
+    "EA_RETAIL_VOL": {
+        "label": "Търговия на дребно — обем (YoY %)",
+        "invert": False,
+        "transform": "yoy_pct",
+        "is_rate": True,
+    },
+    "EA_BUILDING_PRODUCTION": {
+        "label": "Строително производство (YoY %)",
+        "invert": False,
+        "transform": "yoy_pct",
+        "is_rate": True,
+    },
+    "EA_GDP_QOQ": {
+        "label": "Реален БВП (QoQ %)",
+        "invert": False,
+        "transform": "qoq_pct",  # quarterly → QoQ %
+        "is_rate": True,
+    },
+    "EA_ESI": {
+        "label": "Икономически Sentiment Indicator",
+        "invert": False,
+        "transform": "level",
+        "is_rate": False,  # ESI е index ~100 base, не percentage
     },
 }
 
-COMPOSITE_SERIES = ["EA_IP"]
-COMPOSITE_WEIGHTS = [1.0]
+# Hard data доминира; sentiment е leading но noisy.
+# IP най-широко покритие; retail е consumer proxy; GDP е headline; ESI е forward.
+COMPOSITE_SERIES  = ["EA_IP",  "EA_RETAIL_VOL", "EA_BUILDING_PRODUCTION", "EA_GDP_QOQ", "EA_ESI"]
+COMPOSITE_WEIGHTS = [0.30,      0.25,            0.15,                     0.20,         0.10]
 
 
 # Регими (BG): висок YoY% growth → висок score → здрав растеж

@@ -20,13 +20,13 @@
 | 5. Research Desk | ✅ | Journal layer (CRUD + filter) + sandbox scaffolding |
 | 6. Package | ✅ | FRAMEWORK.md, AGENT.md, PHASES.md, run.bat, tag v0.1.0 |
 
-134 теста минават · 16 серии fetch-ват чисто end-to-end.
+139 теста минават · 30 серии fetch-ват чисто end-to-end.
 
 ---
 
 ## Какво прави
 
-Чете 16 макроикономически серии от ECB Statistical Data Warehouse и Eurostat REST API, групирани в 5 analytical lens-а (Labor, Inflation, Growth, Credit, ECB), и генерира седмичен HTML briefing с:
+Чете 30 макроикономически серии от ECB Statistical Data Warehouse и Eurostat REST API, групирани в 5 analytical lens-а (Labor, Inflation, Growth, Credit, ECB), и генерира седмичен HTML briefing с:
 
 - **Executive summary** — composite macro score (0–100) и режим (БГ: ЗДРАВ / СМЕСЕН / ВЛОШАВАЩ СЕ / РЕЦЕСИОНЕН)
 - **Per-module блокове** — индикатори, percentile rank, YoY промени за всеки lens

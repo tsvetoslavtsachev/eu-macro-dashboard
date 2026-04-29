@@ -8,13 +8,15 @@
 
 5 analytical lens-а покриват EA макроиконoмиката:
 
-| Lens | Какво измерва | Серии |
+| Lens | Какво измерва | Серии (брой) |
 |---|---|---|
-| 👷 **Labor** | Цикличeн натиск на пазара на труда | EA UNRATE (1) |
-| 🔥 **Inflation** | HICP натиск спрямо ECB target | HICP headline / core / services (3) |
-| 📈 **Growth** | Реална активност и hard data | EA Industrial Production YoY (1) |
-| 🏦 **ECB** | Монетарен stance (нов lens, без US аналог) | DFR, MRO, MLF, balance sheet (4) |
-| 💳 **Credit** | Системен стрес и transmission | CISS, M3, sovereign yields, BTP-Bund (7) |
+| 👷 **Labor** | Цикличeн натиск на пазара на труда | UNRATE, LFS_EMP, EmpExp (3) |
+| 🔥 **Inflation** | HICP натиск + expectations | HICP headline/core/services + SPF LT (4) |
+| 📈 **Growth** | Реална активност + sentiment | IP, retail, construction, GDP, ESI + сектор. конфидент. (10) |
+| 🏦 **ECB** | Монетарен stance | DFR, MRO, MLF, balance sheet (4) |
+| 💳 **Credit** | Системен стрес + bank lending | CISS, M3, sovereign yields, BTP-Bund, MFI loans (9) |
+
+**Общо: 30 серии в catalog-а.**
 
 **Защо отделен ECB lens?** ЕЦБ има single mandate (ценова стабилност); transmission-ът минава през фрагментиран банков сектор; sovereign spreads (BTP-Bund) са EA-unique stress channel. В US модела Fed е разпиляван през няколко lens-а — за EA това би замазало ключови особености.
 
