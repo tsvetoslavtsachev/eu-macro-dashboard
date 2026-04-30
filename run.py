@@ -229,12 +229,12 @@ def cmd_export_context(args) -> int:
     """Markdown context export за LLM analysis (Phase 9)."""
     from sources.ecb_adapter import EcbAdapter
     from sources.eurostat_adapter import EurostatAdapter
-    from export.briefing_context import generate_briefing_context
-    import modules.labor as labor_mod
-    import modules.inflation as inflation_mod
-    import modules.growth as growth_mod
-    import modules.credit as credit_mod
-    import modules.ecb as ecb_mod
+    from export.briefing_context import generate_briefing_context, augment_snapshot_with_derived
+    from analysis.breadth import compute_lens_breadth
+    from analysis.divergence import compute_cross_lens_divergence
+    from analysis.anomaly import compute_anomalies
+    from catalog.series import ALLOWED_LENSES
+    from datetime import date
 
     adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
 
@@ -247,28 +247,46 @@ def cmd_export_context(args) -> int:
         print("⚠ Snapshot е празен. Стартирай `python run.py --status --refresh` първо.")
         return 1
 
-    print(f"\n📦 Snapshot: {len(snapshot)} серии заредени")
-    print("🔬 Изчисляване на модули...")
+    # Augment с derived series (BTP-Bund, OAT-Bund) преди анализа
+    augmented = augment_snapshot_with_derived(snapshot)
+    print(f"\n📦 Snapshot: {len(augmented)} серии заредени (incl. derived spreads)")
 
-    modules_results = []
-    for name, mod in [("labor", labor_mod), ("inflation", inflation_mod),
-                      ("growth", growth_mod), ("credit", credit_mod),
-                      ("ecb", ecb_mod)]:
+    print("🔬 Изчисляване на breadth / divergence / anomaly reports...")
+
+    lens_reports = {}
+    for lens in sorted(ALLOWED_LENSES):
         try:
-            modules_results.append(mod.run(snapshot))
+            lens_reports[lens] = compute_lens_breadth(lens, augmented)
         except Exception as e:
-            print(f"   ⚠ {name}: грешка — {e}")
+            print(f"   ⚠ breadth[{lens}]: грешка — {e}")
 
-    output_path = f"{OUTPUT_DIR}/briefing_context_{datetime.now().strftime('%Y-%m-%d')}.md"
+    try:
+        cross_report = compute_cross_lens_divergence(augmented)
+    except Exception as e:
+        print(f"   ⚠ cross_lens divergence грешка — {e}")
+        return 1
+
+    try:
+        anomaly_report = compute_anomalies(augmented, z_threshold=2.0, top_n=10)
+    except Exception as e:
+        print(f"   ⚠ anomalies грешка — {e}")
+        return 1
+
+    today = date.today()
+    output_path = f"{OUTPUT_DIR}/briefing_context_{today.isoformat()}.md"
     print(f"📝 Генериране на context markdown → {output_path}")
 
     generate_briefing_context(
-        snapshot=snapshot,
-        modules_results=modules_results,
+        snapshot=augmented,
+        lens_reports=lens_reports,
+        cross_report=cross_report,
+        anomaly_report=anomaly_report,
+        today=today,
         output_path=output_path,
     )
 
     print(f"✓ Context готов: {output_path}")
+    print(f"  Теми: {len(lens_reports)} | Cross-lens pairs: {len(cross_report.pairs)} | Аномалии: {anomaly_report.total_flagged}")
     return 0
 
 

@@ -1,478 +1,98 @@
 """
 export/briefing_context.py
 ==========================
-Markdown export за LLM analysis — Phase 9.
+Markdown export за LLM analysis — Eurozone версия (US-style structure).
 
-Различава се от weekly_briefing.py (HTML за човек):
-  - Markdown structured за copy-paste в LLM context
-  - BG language by default; английски ще се добави в Phase 10
-  - Per-series fact cards с пълна metadata
-  - Cross-spreads section с derived numbers (Phase 8)
-  - Methodology footer с обяснение на metrics
+Generates Claude-friendly briefing context като .md файл с пълния analytical
+state. Без composite scores — фокус върху breadth + direction + аномалии,
+по същата шаблон като us-macro-dashboard.
 
-Sections (BG):
-  1. Header — timestamp, catalog scope, overall regime
-  2. Executive — 5 lens composites + macro snapshot
-  3. Themes — 3-4 sentence narrative capturing top themes
-  4. Cross-Lens — 6 pairs current state
-  5. Cross-Spreads — real DFR, yield curve, sovereign spreads, anchored band
-  6. Anomalies — extreme readings per lens
-  7. Series Fact Cards — annex с пълна metadata за всяка серия
-  8. Methodology — обяснение на metrics + ограничения
+Sections:
+  1. Header — дата, theme count, cross-lens count, anomaly count
+  2. Executive Summary — table: тема | посока | breadth ↑ | аномалии
+  1.5. Cross-spreads и реални нива — derived metrics (real DFR forward,
+       real wages, real M3, yield curve, sovereign spreads, anchored band,
+       PPI→CPI pipeline)
+  3. Темите по peer group — за всяка тема: peer_group breadth tables
+  4. Cross-Lens Divergence — 6 двойки с 5-state interpretation list
+  5. Top Anomalies (fact cards) — серии с |z|>2 + full metadata
+  6. Методология (compact)
 
-Output:
-  output/briefing_context_YYYY-MM-DD.md
+Inputs:
+  - snapshot: dict[sid, pd.Series]
+  - lens_reports: dict[lens, LensBreadthReport]
+  - cross_report: CrossLensDivergenceReport
+  - anomaly_report: AnomalyReport
+
+Output: output/briefing_context_YYYY-MM-DD.md
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Optional
 
+import math
 import numpy as np
 import pandas as pd
 
-from catalog.series import SERIES_CATALOG, series_by_lens, series_by_peer_group
+from catalog.series import SERIES_CATALOG
 from catalog.cross_lens_pairs import CROSS_LENS_PAIRS
 from config import (
-    HISTORY_START, MODULE_WEIGHTS, ANCHORED_ZONES,
+    ANCHORED_ZONES,
     NOMINAL_SERIES_NEED_DEFLATION,
+    CORE_DEFLATOR_KEY,
+    POLICY_RATE_KEY,
+    FORWARD_INFL_KEY,
+    NOMINAL_10Y_KEY,
+    NOMINAL_2Y_KEY,
 )
-from analysis.cross_spreads import (
-    compute_real_dfr_forward,
-    compute_yield_curve_spread,
-    compute_sovereign_stress_spreads,
-    assess_anchored_band,
-    ppi_cpi_lead_lag,
+from core.display import change_kind, compute_change, fmt_change, fmt_value
+from core.primitives import _infer_yoy_periods
+from export.data_status import (
+    PERIOD_LENGTH_DAYS,
+    RELEASE_LAG_DAYS,
+    assess_data_staleness,
 )
 
 
 # ============================================================
-# Helpers
+# CONFIG
 # ============================================================
+
+HISTORY_YEARS = 5
+FACT_CARD_TAIL = 6
+LENS_ORDER = ["labor", "inflation", "growth", "credit", "ecb"]
 
 LENS_LABEL_BG = {
     "labor":     "Пазар на труда",
     "inflation": "Инфлация",
     "growth":    "Растеж и активност",
-    "credit":    "Финансови условия",
+    "credit":    "Финансови условия и кредит",
     "ecb":       "ЕЦБ парична политика",
 }
-
-LENS_ICON = {
-    "labor": "👷", "inflation": "🔥", "growth": "📈",
-    "credit": "🏛", "ecb": "🏦",
+DIRECTION_LABEL_BG = {
+    "expanding":         "разширяване",
+    "contracting":       "свиване",
+    "mixed":             "смесено",
+    "insufficient_data": "недостатъчно данни",
+}
+STATE_LABEL_BG = {
+    "both_up":           "↑↑ и двете нагоре",
+    "both_down":         "↓↓ и двете надолу",
+    "a_up_b_down":       "↑↓ A нагоре / B надолу",
+    "a_down_b_up":       "↓↑ A надолу / B нагоре",
+    "transition":        "⇄ преход",
+    "insufficient_data": "недостатъчно данни",
 }
 
 
-def _format_value(value: Optional[float], is_rate: bool = False, decimals: int = 2) -> str:
-    """Форматира число с подходящо unit (% или pp)."""
-    if value is None:
-        return "—"
-    if isinstance(value, (int, float)) and np.isnan(value):
-        return "—"
-    fmt = f"{{:.{decimals}f}}"
-    return fmt.format(value)
-
-
-def _series_percentile(series: pd.Series, value: float, history_start: str = HISTORY_START) -> Optional[float]:
-    history = series[series.index >= pd.Timestamp(history_start)].dropna()
-    if len(history) == 0:
-        return None
-    return float((history < value).sum() / len(history) * 100)
-
-
-def _series_5y_window(series: pd.Series) -> pd.Series:
-    if series.empty:
-        return series
-    cutoff = series.index.max() - pd.DateOffset(years=5)
-    return series.loc[cutoff:]
-
-
-def _last_n_readings(series: pd.Series, n: int = 6) -> list[tuple[str, float]]:
-    if series.empty:
-        return []
-    tail = series.dropna().tail(n)
-    return [(str(d.date()), float(v)) for d, v in tail.items()]
-
-
 # ============================================================
-# Section renderers
+# DERIVED SNAPSHOT (BTP-Bund, OAT-Bund spreads)
 # ============================================================
 
-def render_header(snapshot: dict[str, pd.Series]) -> str:
-    today = datetime.now().strftime("%Y-%m-%d %H:%M")
-    n_series = len(snapshot)
-    n_catalog = len(SERIES_CATALOG)
-    return (
-        f"# Briefing Context — Eurozone Macro Dashboard\n\n"
-        f"**Дата:** {today}\n"
-        f"**Catalog:** {n_catalog} серии | **Snapshot:** {n_series} fetched\n"
-        f"**History window:** от {HISTORY_START} (EMU era)\n"
-        f"**Език:** български | **Audience:** LLM context за дълбок макро анализ\n\n"
-    )
-
-
-def render_executive(modules_results: list[dict]) -> str:
-    """5-lens composite snapshot + macro score."""
-    lines = ["## 1. Executive Summary\n"]
-
-    if not modules_results:
-        return "\n".join(lines) + "\n_Няма module results — стартирай --refresh._\n"
-
-    # Composite macro
-    weighted = sum(
-        r["composite"] * MODULE_WEIGHTS.get(r["module"], 0)
-        for r in modules_results
-    )
-    total_weight = sum(MODULE_WEIGHTS.get(r["module"], 0) for r in modules_results)
-    overall = round(weighted / total_weight, 1) if total_weight else 50.0
-
-    lines.append(f"**Композитен Macro Score: {overall}**\n")
-    lines.append("| Тема | Composite | Regime | Серии |")
-    lines.append("|---|---:|---|---:|")
-    for r in modules_results:
-        icon = LENS_ICON.get(r["module"], "")
-        label = r["label"]
-        n = len(r.get("indicators", {}))
-        lines.append(f"| {icon} {label} | {r['composite']:.1f} | {r['regime']} | {n} |")
-    lines.append("")
-    return "\n".join(lines) + "\n"
-
-
-def render_themes(modules_results: list[dict], snapshot: dict[str, pd.Series]) -> str:
-    """3-4 sentence narrative capturing top themes."""
-    lines = ["## 2. Главни теми (data-driven, без LLM intervention)\n"]
-
-    # Inflation theme
-    infl_result = next((r for r in modules_results if r["module"] == "inflation"), None)
-    if infl_result:
-        inflation_score = infl_result["composite"]
-        if inflation_score > 70:
-            lines.append(f"- **Инфлация ЕЛЕВИРАНА** (composite {inflation_score:.1f}) — натиск над ЕЦБ target.")
-        elif inflation_score > 50:
-            lines.append(f"- **Инфлация близо до целта** (composite {inflation_score:.1f}) — нормализация в ход.")
-        else:
-            lines.append(f"- **Инфлация ниска** (composite {inflation_score:.1f}) — потенциално deflation territory.")
-
-    # Labor theme
-    labor_result = next((r for r in modules_results if r["module"] == "labor"), None)
-    if labor_result:
-        labor_score = labor_result["composite"]
-        regime = labor_result["regime"]
-        lines.append(f"- **Labor: {regime}** (composite {labor_score:.1f}) — определя wage pass-through risk.")
-
-    # ECB stance
-    ecb_result = next((r for r in modules_results if r["module"] == "ecb"), None)
-    if ecb_result:
-        ecb_score = ecb_result["composite"]
-        regime = ecb_result["regime"]
-        lines.append(f"- **ЕЦБ stance: {regime}** (composite {ecb_score:.1f}).")
-
-    # Credit
-    credit_result = next((r for r in modules_results if r["module"] == "credit"), None)
-    if credit_result:
-        credit_score = credit_result["composite"]
-        regime = credit_result["regime"]
-        lines.append(f"- **Credit conditions: {regime}** (composite {credit_score:.1f}).")
-
-    # Growth
-    growth_result = next((r for r in modules_results if r["module"] == "growth"), None)
-    if growth_result:
-        growth_score = growth_result["composite"]
-        regime = growth_result["regime"]
-        lines.append(f"- **Растеж: {regime}** (composite {growth_score:.1f}).")
-
-    return "\n".join(lines) + "\n\n"
-
-
-def _peer_group_direction(snapshot: dict[str, pd.Series], peer_group: str) -> Optional[str]:
-    """Простa direction класификация за peer_group breadth.
-
-    Returns 'up' / 'down' / 'mixed' / None.
-    """
-    members = series_by_peer_group(peer_group)
-    deltas = []
-    for m in members:
-        sid = m["_key"]
-        s = snapshot.get(sid)
-        if s is None or s.empty or len(s) < 13:
-            continue
-        recent = float(s.iloc[-1])
-        year_ago_idx = s.index.max() - pd.DateOffset(years=1)
-        past = s[s.index <= year_ago_idx]
-        if past.empty:
-            continue
-        deltas.append(recent - float(past.iloc[-1]))
-
-    if not deltas:
-        return None
-
-    pos = sum(1 for d in deltas if d > 0)
-    neg = sum(1 for d in deltas if d < 0)
-    if pos > 0 and neg == 0:
-        return "up"
-    if neg > 0 and pos == 0:
-        return "down"
-    if pos > neg:
-        return "mostly_up"
-    if neg > pos:
-        return "mostly_down"
-    return "mixed"
-
-
-def render_cross_lens(snapshot: dict[str, pd.Series]) -> str:
-    """6 cross-lens pairs current state."""
-    lines = ["## 3. Cross-Lens двойки\n"]
-
-    for pair in CROSS_LENS_PAIRS:
-        slot_a = pair["slot_a"]
-        slot_b = pair["slot_b"]
-
-        dir_a = _peer_group_direction(snapshot, slot_a["peer_groups"][0]) if slot_a["peer_groups"] else None
-        dir_b = _peer_group_direction(snapshot, slot_b["peer_groups"][0]) if slot_b["peer_groups"] else None
-
-        # Простa state mapping
-        if dir_a is None or dir_b is None:
-            state = "transition"
-        elif dir_a in ("up", "mostly_up") and dir_b in ("up", "mostly_up"):
-            state = "both_up"
-        elif dir_a in ("down", "mostly_down") and dir_b in ("down", "mostly_down"):
-            state = "both_down"
-        elif dir_a in ("up", "mostly_up") and dir_b in ("down", "mostly_down"):
-            state = "a_up_b_down"
-        elif dir_a in ("down", "mostly_down") and dir_b in ("up", "mostly_up"):
-            state = "a_down_b_up"
-        else:
-            state = "transition"
-
-        lines.append(f"### {pair['name_bg']}\n")
-        lines.append(f"_{pair['question_bg']}_\n")
-        lines.append(f"- **slot_a** ({slot_a['label']}): {dir_a or 'няма данни'}")
-        lines.append(f"- **slot_b** ({slot_b['label']}): {dir_b or 'няма данни'}")
-        lines.append(f"- **State:** `{state}`")
-        lines.append(f"- **Интерпретация:** {pair['interpretations'][state]}")
-        lines.append("")
-
-    return "\n".join(lines) + "\n"
-
-
-def render_cross_spreads(snapshot: dict[str, pd.Series]) -> str:
-    """Phase 8 derived numbers: real DFR, yield curve, sovereign spreads, anchored band."""
-    lines = ["## 4. Cross-Spreads и derived metrics\n"]
-
-    # Real DFR
-    real_dfr = compute_real_dfr_forward(snapshot)
-    if real_dfr:
-        stance = "restrictive" if real_dfr.is_restrictive else "neutral/loose"
-        lines.append(
-            f"### Реална policy rate (forward)\n\n"
-            f"`real_DFR = ECB_DFR − SPF LT inflation = {real_dfr.nominal_rate:.2f}% − "
-            f"{real_dfr.forward_inflation:.2f}% = **{real_dfr.real_rate:+.2f}pp**`\n\n"
-            f"Stance: **{stance}**. > 0.5pp = restrictive, < 0pp = stimulative.\n"
-        )
-
-    # Yield curve
-    curve = compute_yield_curve_spread(snapshot)
-    if curve:
-        slope_label = "inverted" if curve.is_inverted else ("flat" if abs(curve.spread_pp) < 0.25 else "positive")
-        lines.append(
-            f"### Yield curve (Bund 10Y-2Y)\n\n"
-            f"`spread = {curve.spread_pp:+.2f}pp ({curve.spread_bps:+.0f}bps)` ({curve.last_date.date()})\n\n"
-            f"Slope: **{slope_label}**. Inverted = recession risk proxy (post-EMU база).\n"
-        )
-
-    # Sovereign spreads
-    spreads = compute_sovereign_stress_spreads(snapshot)
-    if spreads:
-        lines.append("### Sovereign spreads vs Bund\n")
-        for sid, val in spreads.items():
-            ctry = "BTP-Bund (IT)" if "BTP" in sid else "OAT-Bund (FR)"
-            stress_level = "висок" if val > 1.5 else ("елевиран" if val > 0.8 else "нормален")
-            lines.append(f"- **{ctry}**: {val:+.2f}pp — {stress_level} stress level.")
-        lines.append("")
-
-    # SPF anchored band
-    spf = snapshot.get("EA_SPF_HICP_LT")
-    if spf is not None and not spf.empty:
-        latest = float(spf.iloc[-1])
-        band = assess_anchored_band(latest, "EA_SPF_HICP_LT", series=spf)
-        if band:
-            zone = ANCHORED_ZONES["EA_SPF_HICP_LT"]
-            lines.append(
-                f"### SPF inflation expectations anchoring\n\n"
-                f"Latest: **{latest:.2f}%** ({spf.index[-1].date()})\n\n"
-                f"State: **{band.state}** (distance {band.distance_from_mean:+.2f}σ от mean {zone['mean']:.2f}%)\n\n"
-                f"Empirical bands (от stable era {zone['stable_era']}, n={zone['n_observations']}):\n"
-                f"- tight: [{zone['tight_band'][0]:.2f}, {zone['tight_band'][1]:.2f}]\n"
-                f"- anchored: [{zone['anchored_band'][0]:.2f}, {zone['anchored_band'][1]:.2f}] (±1σ)\n"
-                f"- de-anchored: outside [{zone['drift_band'][0]:.2f}, {zone['drift_band'][1]:.2f}]\n\n"
-                f"{band.narrative_bg}\n"
-            )
-
-    # PPI-CPI lead-lag
-    ll = ppi_cpi_lead_lag(snapshot)
-    if ll:
-        lines.append(
-            f"### PPI → CPI core pipeline\n\n"
-            f"Best lag: **{ll.best_lag} месеца** (correlation {ll.best_corr:.2f})\n\n"
-            f"All lags: " + ", ".join(f"`{lag}m={c:.2f}`" for lag, c in sorted(ll.correlations.items())) + "\n"
-        )
-
-    return "\n".join(lines) + "\n"
-
-
-def render_anomalies(modules_results: list[dict], snapshot: dict[str, pd.Series]) -> str:
-    """Top extreme readings (|z-score| > 1.5) на base от scoring."""
-    lines = ["## 5. Аномалии (|z| > 1.5)\n"]
-
-    extreme: list[tuple[str, str, float, str]] = []  # (lens, sid, z, label)
-    for r in modules_results:
-        for sid, scored in r.get("indicators", {}).items():
-            z = scored.get("z_score")
-            if z is None:
-                continue
-            if abs(z) > 1.5:
-                extreme.append((r["module"], sid, z, scored.get("name", sid)))
-
-    if not extreme:
-        lines.append("_Няма extreme z-scores в текущия snapshot._\n")
-        return "\n".join(lines) + "\n"
-
-    extreme.sort(key=lambda x: -abs(x[2]))
-    for lens, sid, z, name in extreme[:8]:  # top 8
-        sign = "↑" if z > 0 else "↓"
-        lines.append(f"- {sign} `{sid}` ({lens}): z={z:+.2f} — {name}")
-    lines.append("")
-    return "\n".join(lines) + "\n"
-
-
-def render_series_fact_cards(snapshot: dict[str, pd.Series]) -> str:
-    """Per-series пълна metadata + последни 6 readings + 5y range."""
-    lines = ["## 6. Series Fact Cards (annex)\n"]
-    lines.append("Per series: ECB/Eurostat ID, percentile, 5y range, последни 6 readings, narrative.\n")
-
-    by_lens: dict[str, list[str]] = {l: [] for l in LENS_LABEL_BG}
-
-    for sid, meta in SERIES_CATALOG.items():
-        for lens in meta.get("lens", []):
-            if lens in by_lens:
-                by_lens[lens].append(sid)
-
-    for lens, sid_list in by_lens.items():
-        if not sid_list:
-            continue
-        icon = LENS_ICON[lens]
-        label = LENS_LABEL_BG[lens]
-        lines.append(f"\n### {icon} {label}\n")
-
-        for sid in sorted(sid_list):
-            meta = SERIES_CATALOG[sid]
-            series = snapshot.get(sid)
-
-            lines.append(f"\n#### `{sid}` — {meta['name_bg']}\n")
-            lines.append(f"- **Source:** {meta['source']} | **ID:** `{meta['id']}`")
-            lines.append(f"- **Peer group:** {meta['peer_group']} | **Tags:** {meta['tags'] or '—'}")
-            lines.append(
-                f"- **Transform:** {meta['transform']} | **is_rate:** {meta['is_rate']} | "
-                f"**Schedule:** {meta['release_schedule']}"
-            )
-            lines.append(f"- **History start:** {meta['historical_start']}")
-
-            # Nominal flag
-            if sid in NOMINAL_SERIES_NEED_DEFLATION:
-                lines.append("- ⚠️ **Nominal series** — изисква deflation (HICP_CORE) за real анализ.")
-
-            # SPF link
-            if sid == "EA_SPF_HICP_LT":
-                lines.append("- 🎯 **Anchored band** — виж секция 4 за empirical thresholds.")
-
-            if series is None or series.empty:
-                lines.append(f"- _no data в snapshot_")
-                lines.append(f"- _{meta['narrative_hint']}_\n")
-                continue
-
-            latest = float(series.iloc[-1])
-            last_date = series.index[-1].date()
-            pct = _series_percentile(series, latest)
-            window_5y = _series_5y_window(series).dropna()
-
-            lines.append(f"- **Latest:** {latest:.3f} ({last_date}) | **Percentile (от {meta['historical_start']}):** {pct:.1f}/100" if pct is not None else f"- **Latest:** {latest:.3f}")
-
-            if not window_5y.empty:
-                lines.append(
-                    f"- **5y window:** min {window_5y.min():.2f} | mean {window_5y.mean():.2f} | "
-                    f"median {window_5y.median():.2f} | max {window_5y.max():.2f}"
-                )
-
-            readings = _last_n_readings(series, n=6)
-            if readings:
-                lines.append("- **Последни 6:** " + " · ".join(f"`{d}: {v:.2f}`" for d, v in readings))
-
-            lines.append(f"- _{meta['narrative_hint']}_")
-
-    return "\n".join(lines) + "\n"
-
-
-def render_methodology() -> str:
-    """Обяснение на metrics + ограничения."""
-    return """
-## 7. Methodology
-
-### Score (0-100)
-Per-series percentile rank спрямо историческия диапазон (EMU era 1999+).
-Висок score = top-of-history; нисък = bottom. Invert flag обръща
-семантиката за "lower is better" series (e.g., unemployment).
-
-### Composite weights per lens
-- **Labor:** UNRATE 0.40, LFS 0.25, EXP 0.10, WAGES 0.25
-- **Inflation:** HICP HEADLINE 0.20, CORE 0.30, SERVICES 0.25, ENERGY 0.05, FOOD 0.05, PPI 0.15
-- **Growth:** IP 0.30, RETAIL 0.25, BUILDING 0.15, GDP 0.20, ESI 0.10
-- **Credit:** CISS 0.30, sovereign_spreads 0.25 (split BTP/OAT), bank_lending 0.20 (split NFC/HH), Bund 0.15, M3 0.10
-- **ECB:** DFR 0.55, balance_sheet 0.30, MRO 0.15
-
-### Composite Macro
-weighted avg на lens composites: inflation 0.30, growth 0.20, credit 0.20, labor 0.15, ecb 0.15.
-
-### YoY semantics (is_rate flag)
-- is_rate=True → YoY column показва **pp delta** (HICP 2.4% → 2.0% = -0.4pp, не -16.7%)
-- is_rate=False → YoY е relative % change (за индекси, balance scores, levels)
-
-### Cross-Lens pairs (5-state interpretations)
-- both_up / both_down: convergence
-- a_up_b_down / a_down_b_up: divergence
-- transition: mixed / insufficient signal
-
-### SPF anchored zones (Phase 8)
-Empirical bands от stable era 2003-2019 (n=50): mean=1.91%, std=0.13pp.
-- tight (±0.5σ), anchored (±1σ), drifting (±2σ), de-anchored (beyond).
-- ECB target reference: 2.00%.
-
-### Period-aware staleness
-- weekly: FRESH < 7d; DATA_STALE > 12d
-- monthly: FRESH < 30d; DATA_STALE > 60d
-- quarterly: FRESH < 90d; DATA_STALE > 140d (EU release_lag = 50d)
-- annually: FRESH < 365d; DATA_STALE > 455d
-
-### Limitations
-1. SPF е quarterly — forward-fill за monthly join (smoothing artifact possible)
-2. DG ECFIN sentiment series (teibs010/020/030) имат само 12mo история — не usable за percentile
-3. Real growth deflator winner = HICP_CORE; alternative GDP deflator не е в catalog
-4. Yield curve = 10Y-2Y; 10Y-3M не е в catalog (Phase 2 candidate)
-5. Cross-lens direction е простa year-over-year delta; за продукционен use → breadth analysis (analysis/breadth.py)
-"""
-
-
-# ============================================================
-# Main entry
-# ============================================================
-
-def _augment_snapshot_with_derived(snapshot: dict[str, pd.Series]) -> dict[str, pd.Series]:
-    """Adds derived spread series (BTP-Bund, OAT-Bund) to snapshot за cross-lens render.
-
-    Same logic като modules.credit._compute_derived_spreads — without circular import.
-    """
+def augment_snapshot_with_derived(snapshot: dict[str, pd.Series]) -> dict[str, pd.Series]:
+    """Adds derived spread series — same logic като modules.credit без circular import."""
     augmented = dict(snapshot)
     de = augmented.get("DE_10Y")
     if de is None or de.empty:
@@ -493,30 +113,733 @@ def _augment_snapshot_with_derived(snapshot: dict[str, pd.Series]) -> dict[str, 
     return augmented
 
 
+# ============================================================
+# COMPUTATIONAL HELPERS
+# ============================================================
+
+def _last_value(series: Optional[pd.Series]) -> Optional[float]:
+    if series is None or series.empty:
+        return None
+    s = series.dropna()
+    if s.empty:
+        return None
+    return float(s.iloc[-1])
+
+
+def _last_obs_date(series: Optional[pd.Series]) -> Optional[date]:
+    if series is None or series.empty:
+        return None
+    s = series.dropna()
+    if s.empty:
+        return None
+    last = s.index[-1]
+    return last.date() if hasattr(last, "date") else None
+
+
+def _yoy_pct(series: Optional[pd.Series], periods: Optional[int] = None) -> Optional[float]:
+    """YoY % за последното observation. Auto-inferra periods (12 monthly, 4 quarterly)."""
+    if series is None or series.empty:
+        return None
+    s = series.dropna()
+    if len(s) < 2:
+        return None
+    if periods is None:
+        periods = _infer_yoy_periods(s)
+    if len(s) <= periods:
+        return None
+    pct = s.pct_change(periods=periods) * 100
+    last = pct.iloc[-1]
+    if pd.isna(last):
+        return None
+    return float(last)
+
+
+def _annualized_change(series: Optional[pd.Series], periods: int = 3) -> Optional[float]:
+    """N-period change annualized."""
+    if series is None or series.empty:
+        return None
+    s = series.dropna()
+    if len(s) <= periods:
+        return None
+    cumulative = s.iloc[-1] / s.iloc[-1 - periods] - 1
+    inferred = _infer_yoy_periods(s)
+    if inferred <= 0:
+        return None
+    annualization_factor = inferred / periods
+    return float(((1 + cumulative) ** annualization_factor - 1) * 100)
+
+
+def _percentile_5y(series: Optional[pd.Series], history_years: int = 5) -> Optional[float]:
+    if series is None or series.empty:
+        return None
+    s = series.dropna().sort_index()
+    if len(s) < 2:
+        return None
+    last_idx = s.index[-1]
+    cutoff = last_idx - pd.DateOffset(years=history_years)
+    s5y = s[s.index >= cutoff]
+    if len(s5y) < 2:
+        return None
+    last_value = float(s5y.iloc[-1])
+    return float((s5y < last_value).sum() / len(s5y) * 100)
+
+
+def _staleness_marker(level: str) -> str:
+    return {
+        "FRESH":      "",
+        "EXPECTED":   "",
+        "DATA_STALE": "❌ ",
+        "UNKNOWN":    "(няма данни) ",
+    }.get(level, "")
+
+
+# ============================================================
+# SECTION 1: HEADER
+# ============================================================
+
+def _render_header(today: date, lens_reports: dict, cross_report, anomaly_report) -> str:
+    lines = [
+        f"# Briefing Context — {today.isoformat()}",
+        "",
+        "Машинно-генериран **дълбок** analytical snapshot за LLM анализ. "
+        "Подава всичкото което briefing.html-ът показва, плюс per-series fact cards "
+        f"с {HISTORY_YEARS}-годишен исторически контекст.",
+        "",
+        "**Как да го ползваш:** копирай съдържанието или закачи файла в Claude чат "
+        "и питай дълбоки въпроси за серии, темите или текущите аномалии. "
+        "Всичко е детерминистично, без LLM нарация — само изчислени стойности.",
+        "",
+        "**Регион:** Eurozone (EA-20). **Източници:** ECB SDW + Eurostat REST.",
+        "",
+        f"- **Дата на брифинга:** {today.isoformat()}",
+        f"- **Брой теми:** {len(lens_reports)}",
+        f"- **Cross-lens двойки:** {len(cross_report.pairs)}",
+        f"- **Аномалии (|z|>{anomaly_report.threshold:.0f}):** {anomaly_report.total_flagged} (top {len(anomaly_report.top)})",
+    ]
+    return "\n".join(lines)
+
+
+# ============================================================
+# SECTION 1: EXECUTIVE SUMMARY
+# ============================================================
+
+def _render_executive_summary(lens_reports: dict, anomaly_report) -> str:
+    lines = ["## 1. Executive Summary", ""]
+    lines.append("| Тема | Посока (general) | Breadth ↑ (avg) | Аномалии (|z|>2) |")
+    lines.append("|---|---|---|---|")
+
+    for lens in LENS_ORDER:
+        rep = lens_reports.get(lens)
+        if rep is None:
+            continue
+        breadths = [
+            pg.breadth_positive for pg in rep.peer_groups
+            if not (isinstance(pg.breadth_positive, float) and math.isnan(pg.breadth_positive))
+        ]
+        avg_breadth = (sum(breadths) / len(breadths)) if breadths else None
+        avg_str = f"{avg_breadth*100:.0f}%" if avg_breadth is not None else "—"
+
+        dir_counts = {"expanding": 0, "contracting": 0, "mixed": 0, "insufficient_data": 0}
+        for pg in rep.peer_groups:
+            dir_counts[pg.direction] = dir_counts.get(pg.direction, 0) + 1
+        if dir_counts["expanding"] > dir_counts["contracting"]:
+            general = "разширяване"
+        elif dir_counts["contracting"] > dir_counts["expanding"]:
+            general = "свиване"
+        else:
+            general = "смесено"
+
+        n_anom = len(anomaly_report.by_lens.get(lens, []))
+        lines.append(f"| {LENS_LABEL_BG.get(lens, lens)} | {general} | {avg_str} | {n_anom} |")
+    return "\n".join(lines)
+
+
+# ============================================================
+# SECTION 1.5: CROSS-SPREADS И РЕАЛНИ НИВА (EA-specific)
+# ============================================================
+
+def _render_cross_spreads(snapshot: dict[str, pd.Series], today: date, history_years: int) -> str:
+    """EU cross-spreads: real DFR forward, real wages/M3/lending, curve, sovereign spreads,
+    anchored band, PPI→CPI pipeline."""
+    parts = ["## 1.5 Cross-spreads и реални нива", ""]
+    parts.append(
+        "Производни числа за директно използване в теза. **Deflator: HICP Core** "
+        f"(`{CORE_DEFLATOR_KEY}` YoY) — ЕЦБ-preferred underlying inflation. "
+        f"**Real DFR forward** = `{POLICY_RATE_KEY}` − `{FORWARD_INFL_KEY}` "
+        "(ECB SPF long-term). Тези числа НЕ са в каталога — изчислени са тук от налични серии."
+    )
+    parts.append("")
+
+    # ─── Core HICP YoY (deflator) ───
+    # EA_HICP_CORE has transform=level (RCH_A is already YoY%) → just take last value
+    core_hicp_yoy = _last_value(snapshot.get(CORE_DEFLATOR_KEY))
+
+    # ═══════════════════════════════════════
+    # Реални нива
+    # ═══════════════════════════════════════
+    parts.append("### Реални нива")
+    parts.append("")
+
+    if core_hicp_yoy is None:
+        parts.append("_HICP Core липсва — реалните нива не могат да се изчислят._")
+        parts.append("")
+    else:
+        parts.append(
+            f"_HICP Core (`{CORE_DEFLATOR_KEY}`) YoY = **{core_hicp_yoy:+.2f}%** — "
+            f"използва се като deflator._"
+        )
+        parts.append("")
+        parts.append("| Метрика | Стойност | Интерпретация |")
+        parts.append("|---|---|---|")
+
+        # Real wages (compensation per employee — quarterly, periods=4 за raw level)
+        comp = snapshot.get("EA_COMP_PER_EMPLOYEE")
+        if comp is not None and not comp.empty:
+            comp_yoy = _yoy_pct(comp, periods=4)  # quarterly
+            if comp_yoy is not None:
+                real = comp_yoy - core_hicp_yoy
+                interp = (
+                    "workers winning (real wage growth)" if real > 0.5 else
+                    "workers losing (real wages contract)" if real < -0.3 else
+                    "essentially flat — реално workers не печелят"
+                )
+                parts.append(
+                    f"| Real wages (compensation Q-o-Q ann.) | "
+                    f"{real:+.2f}% (nominal {comp_yoy:+.2f}% − HICP core {core_hicp_yoy:+.2f}%) | {interp} |"
+                )
+
+        # Real DFR forward (ECB_DFR − SPF LT)
+        dfr_now = _last_value(snapshot.get(POLICY_RATE_KEY))
+        spf_lt = _last_value(snapshot.get(FORWARD_INFL_KEY))
+        if dfr_now is not None and spf_lt is not None:
+            real_dfr = dfr_now - spf_lt
+            interp = (
+                "**clearly restrictive**" if real_dfr > 1.5 else
+                "moderately restrictive" if real_dfr > 0.5 else
+                "near neutral" if real_dfr > -0.5 else
+                "stimulative"
+            )
+            parts.append(
+                f"| **Real DFR (forward)** | "
+                f"{real_dfr:+.2f}% ({real_dfr*100:+.0f} bps) "
+                f"= DFR {dfr_now:.2f}% − SPF LT {spf_lt:.2f}% | {interp} |"
+            )
+
+        # Real M3 (M3_YOY is already YoY%; subtract HICP_CORE YoY)
+        m3_yoy = _last_value(snapshot.get("EA_M3_YOY"))
+        if m3_yoy is not None:
+            real = m3_yoy - core_hicp_yoy
+            interp = (
+                "expansionary (excess liquidity)" if real > 2.0 else
+                "modest expansion" if real > 0.5 else
+                "neutral" if real > -0.5 else
+                "contractionary"
+            )
+            parts.append(f"| Real M3 (YoY) | {real:+.2f}% (nominal M3 {m3_yoy:+.2f}%) | {interp} |")
+
+        # Real bank lending NFC
+        nfc_yoy = _last_value(snapshot.get("EA_BANK_LOANS_NFC"))
+        if nfc_yoy is not None:
+            real = nfc_yoy - core_hicp_yoy
+            interp = (
+                "real corporate credit expansion" if real > 1.0 else
+                "neutral" if real > -0.5 else
+                "real credit contraction (transmission active)"
+            )
+            parts.append(
+                f"| Real bank lending NFC (YoY) | {real:+.2f}% (nominal {nfc_yoy:+.2f}%) | {interp} |"
+            )
+
+        # Real bank lending HH
+        hh_yoy = _last_value(snapshot.get("EA_BANK_LOANS_HH"))
+        if hh_yoy is not None:
+            real = hh_yoy - core_hicp_yoy
+            interp = (
+                "real household credit expansion" if real > 1.0 else
+                "neutral" if real > -0.5 else
+                "real household credit contraction"
+            )
+            parts.append(
+                f"| Real bank lending HH (YoY) | {real:+.2f}% (nominal {hh_yoy:+.2f}%) | {interp} |"
+            )
+        parts.append("")
+
+    # ═══════════════════════════════════════
+    # Yield curve
+    # ═══════════════════════════════════════
+    parts.append("### Yield curve")
+    parts.append("")
+    bund_10y = _last_value(snapshot.get(NOMINAL_10Y_KEY))
+    bund_2y = _last_value(snapshot.get(NOMINAL_2Y_KEY))
+    if bund_10y is None or bund_2y is None:
+        parts.append("_Bund 10Y или 2Y липсва — curve spread не може да се изчисли._")
+    else:
+        spread = bund_10y - bund_2y
+        bps = spread * 100
+        interp = (
+            "**inverted** — recession proxy (EA history: 2008, 2011 inverted преди cycle turn)"
+            if spread < 0 else
+            "flat (late-cycle / pre-recession)" if spread < 0.5 else
+            "normal slope" if spread < 1.5 else
+            "steep (early-cycle / re-acceleration)"
+        )
+        parts.append("| Spread | Стойност | Интерпретация |")
+        parts.append("|---|---|---|")
+        parts.append(f"| Bund 10Y-2Y | {bps:+.0f} bps ({spread:+.2f}pp) | {interp} |")
+        parts.append("")
+        parts.append("_Note: 10Y-3M spread не е в каталога; добавянето е Phase 2 candidate._")
+        parts.append("")
+
+    # ═══════════════════════════════════════
+    # Sovereign spreads (BTP-Bund, OAT-Bund)
+    # ═══════════════════════════════════════
+    parts.append("### Sovereign stress (vs Bund) — EA-unique fragmentation proxy")
+    parts.append("")
+    btp = _last_value(snapshot.get("EA_BTP_BUND_SPREAD"))
+    oat = _last_value(snapshot.get("EA_OAT_BUND_SPREAD"))
+    if btp is None and oat is None:
+        parts.append("_DE_10Y или peripheral 10Y липсва — spreads не могат да се изчислят._")
+    else:
+        parts.append("| Spread | Стойност | Интерпретация |")
+        parts.append("|---|---|---|")
+        if btp is not None:
+            interp = (
+                "**висок stress** — fragmentation regime (TPI candidate)" if btp > 2.0 else
+                "елевиран (watch list)" if btp > 1.0 else
+                "нормален" if btp > 0.5 else
+                "compressed (benign convergence)"
+            )
+            parts.append(f"| BTP-Bund (IT-DE 10Y) | {btp:+.2f}pp ({btp*100:+.0f} bps) | {interp} |")
+        if oat is not None:
+            interp = (
+                "France-specific stress" if oat > 1.0 else
+                "елевиран" if oat > 0.6 else
+                "нормален"
+            )
+            parts.append(f"| OAT-Bund (FR-DE 10Y) | {oat:+.2f}pp ({oat*100:+.0f} bps) | {interp} |")
+        parts.append("")
+        parts.append(
+            "_Контекст: post-2022 ECB има explicit TPI (Transmission Protection "
+            "Instrument) — fragmentation може да се абсорбира, не assume-вай 2011 repeat._"
+        )
+        parts.append("")
+
+    # ═══════════════════════════════════════
+    # Anchored band проверка (SPF LT)
+    # ═══════════════════════════════════════
+    parts.append("### Anchored band проверка — SPF inflation expectations")
+    parts.append("")
+    spf_zone = ANCHORED_ZONES.get(FORWARD_INFL_KEY)
+    spf_series = snapshot.get(FORWARD_INFL_KEY)
+    if spf_zone and spf_series is not None and not spf_series.empty:
+        cur = float(spf_series.iloc[-1])
+        anch_lo, anch_hi = spf_zone["anchored_band"]
+        drift_lo, drift_hi = spf_zone["drift_band"]
+        if anch_lo <= cur <= anch_hi:
+            zone_state = "✅ в anchored band (±1σ)"
+        elif drift_lo <= cur <= drift_hi:
+            zone_state = f"⚠ drifting (между ±1σ и ±2σ от mean {spf_zone['mean']:.2f}%)"
+        else:
+            zone_state = f"❌ DE-ANCHORED (beyond ±2σ от {spf_zone['mean']:.2f}%)"
+        pct = _percentile_5y(spf_series, history_years)
+        pct_str = f"{pct:.0f}%" if pct is not None else "—"
+        sigma_dist = (cur - spf_zone["mean"]) / spf_zone["std"] if spf_zone["std"] > 0 else 0.0
+        parts.append("| Серия | Текущо | Anchored zone (±1σ) | Състояние | 5y percentile |")
+        parts.append("|---|---|---|---|---|")
+        parts.append(
+            f"| `{FORWARD_INFL_KEY}` | {cur:.2f}% | "
+            f"[{anch_lo:.2f}, {anch_hi:.2f}]% | {zone_state} ({sigma_dist:+.2f}σ) | {pct_str} |"
+        )
+        parts.append("")
+        parts.append(
+            f"_Empirical band derived от **stable era 2003-2019** "
+            f"(n={spf_zone['n_observations']} quarterly): mean = {spf_zone['mean']:.2f}%, "
+            f"std = {spf_zone['std']:.2f}pp. ECB target = {spf_zone['ecb_target']:.2f}%._"
+        )
+        parts.append("")
+    else:
+        parts.append("_SPF LT липсва — anchored band проверка не може да се направи._")
+        parts.append("")
+
+    # ═══════════════════════════════════════
+    # PPI → CPI pipeline (EA: PPI Intermediate, lead 3-6m typically)
+    # ═══════════════════════════════════════
+    parts.append("### Inflation pipeline (PPI Intermediate → HICP Core)")
+    parts.append("")
+    ppi_raw = snapshot.get("EA_PPI_INTERMEDIATE")
+    if ppi_raw is not None and not ppi_raw.empty and core_hicp_yoy is not None:
+        ppi_yoy = _yoy_pct(ppi_raw)  # PPI level → YoY%
+        if ppi_yoy is not None:
+            ppi_3m = _annualized_change(ppi_raw, periods=3)
+            # HICP core е already YoY% (level transform); 3m annualized чрез pct_change
+            # на raw HICP level не е достъпен (RCH_A = вече rate). Използваме само YoY за CPI.
+            gap_yoy = ppi_yoy - core_hicp_yoy
+            if gap_yoy > 1.0:
+                interp = "**PPI горещ → CPI core likely up (3-6m EA lag)**"
+            elif gap_yoy < -1.0:
+                interp = "**PPI cooler → CPI core може да последва (disinflation pipeline)**"
+            else:
+                interp = "PPI и CPI core aligned — neutral pipeline"
+            parts.append(f"- PPI Intermediate: **{ppi_yoy:+.2f}% YoY**" +
+                         (f" · {ppi_3m:+.2f}% 3m annualized" if ppi_3m is not None else ""))
+            parts.append(f"- HICP Core: **{core_hicp_yoy:+.2f}% YoY**")
+            parts.append(f"- YoY gap (PPI − CPI core): **{gap_yoy:+.2f}pp**")
+            parts.append(f"- Pipeline signal: {interp}")
+            parts.append("")
+            parts.append(
+                "_EA PPI→CPI lag е по-дълъг от US (3-6m vs 1-3m) — bank-based "
+                "transmission и rigid pricing structures slow pass-through._"
+            )
+        else:
+            parts.append("_PPI YoY не може да се изчисли (история < 12m)._")
+    else:
+        parts.append("_PPI Intermediate или HICP Core липсва._")
+    parts.append("")
+    return "\n".join(parts)
+
+
+# ============================================================
+# SECTION 2: ТЕМИ ПО PEER GROUP
+# ============================================================
+
+def _fmt_breadth_pct(v) -> str:
+    if v is None:
+        return "—"
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return "—"
+    if math.isnan(f):
+        return "—"
+    return f"{f*100:.0f}%"
+
+
+def _render_themes(lens_reports: dict) -> str:
+    parts = ["## 2. Темите по peer group", ""]
+    for lens in LENS_ORDER:
+        rep = lens_reports.get(lens)
+        if rep is None:
+            continue
+        parts.append(f"### {LENS_LABEL_BG.get(lens, lens)}")
+        parts.append("")
+        parts.append("| Peer group | breadth ↑ | breadth |z|>2 | данни | посока | екстремни членове |")
+        parts.append("|---|---|---|---|---|---|")
+        for pg in rep.peer_groups:
+            bp = _fmt_breadth_pct(pg.breadth_positive)
+            be = _fmt_breadth_pct(pg.breadth_extreme)
+            n_str = f"{pg.n_available}/{pg.n_members}"
+            dir_lbl = DIRECTION_LABEL_BG.get(pg.direction, pg.direction)
+            ext_str = ", ".join(f"`{m}`" for m in pg.extreme_members) if pg.extreme_members else "—"
+            parts.append(f"| {pg.name} | {bp} | {be} | {n_str} | {dir_lbl} | {ext_str} |")
+        parts.append("")
+    return "\n".join(parts)
+
+
+# ============================================================
+# SECTION 3: CROSS-LENS DIVERGENCE
+# ============================================================
+
+def _render_cross_lens(cross_report) -> str:
+    parts = ["## 3. Cross-Lens Divergence", ""]
+    pair_lookup = {p["id"]: p for p in CROSS_LENS_PAIRS}
+
+    for pair_reading in cross_report.pairs:
+        pair_meta = pair_lookup.get(pair_reading.pair_id, {})
+        narrative = pair_meta.get("narrative", "")
+        state_lbl = STATE_LABEL_BG.get(pair_reading.state, pair_reading.state)
+        breadth_a = _fmt_breadth_pct(pair_reading.breadth_a)
+        breadth_b = _fmt_breadth_pct(pair_reading.breadth_b)
+
+        parts.append(f"### {pair_reading.name_bg}")
+        parts.append("")
+        parts.append(f"**Въпрос:** {pair_reading.question_bg}")
+        parts.append("")
+        if narrative:
+            parts.append(f"**Контекст:** {narrative}")
+            parts.append("")
+        parts.append(f"**Текущо състояние:** {state_lbl} (`{pair_reading.state}`)")
+        parts.append("")
+        parts.append(f"**Интерпретация:** {pair_reading.interpretation}")
+        parts.append("")
+
+        parts.append("| Slot | Label | Breadth | n |")
+        parts.append("|---|---|---|---|")
+        parts.append(f"| A | {pair_reading.slot_a_label} | {breadth_a} | {pair_reading.n_a_available} |")
+        parts.append(f"| B | {pair_reading.slot_b_label} | {breadth_b} | {pair_reading.n_b_available} |")
+        parts.append("")
+
+        slot_a_pgs = pair_meta.get("slot_a", {}).get("peer_groups", [])
+        slot_b_pgs = pair_meta.get("slot_b", {}).get("peer_groups", [])
+        slot_a_inv = pair_meta.get("slot_a", {}).get("invert", {})
+        slot_b_inv = pair_meta.get("slot_b", {}).get("invert", {})
+        parts.append("**Състав:**")
+        parts.append(
+            "- A peer_groups: " +
+            ", ".join(f"`{p}`" + (" (inv)" if slot_a_inv.get(p) else "") for p in slot_a_pgs)
+        )
+        parts.append(
+            "- B peer_groups: " +
+            ", ".join(f"`{p}`" + (" (inv)" if slot_b_inv.get(p) else "") for p in slot_b_pgs)
+        )
+        parts.append("")
+
+        # All 5 states with active marked
+        interps = pair_meta.get("interpretations", {})
+        if interps:
+            parts.append("**Всички възможни състояния:**")
+            for state_key, interp in interps.items():
+                state_lbl_alt = STATE_LABEL_BG.get(state_key, state_key)
+                marker = " ← АКТИВНО" if state_key == pair_reading.state else ""
+                parts.append(f"- `{state_key}` ({state_lbl_alt}): {interp}{marker}")
+            parts.append("")
+    return "\n".join(parts)
+
+
+# ============================================================
+# SECTION 4: TOP ANOMALIES (FACT CARDS)
+# ============================================================
+
+def _render_anomalies(anomaly_report, snapshot, today: date, history_years: int) -> str:
+    parts = ["## 4. Top Anomalies (fact cards)", ""]
+    if not anomaly_report.top:
+        parts.append("_Няма серии с |z|>2 в момента._")
+        return "\n".join(parts)
+
+    parts.append(
+        f"Серии с **|z|>{anomaly_report.threshold:.0f}** "
+        f"(lookback {anomaly_report.lookback_years}y), "
+        f"сортирани по абсолютна сила. Всеки fact card съдържа стойност, "
+        f"делта в правилни units (bps/Δ/%), 5-годишен range, "
+        f"последни {FACT_CARD_TAIL} readings и narrative_hint."
+    )
+    parts.append("")
+    parts.append(
+        "> ⚠ **Caveat за NEW 5Y MAX/MIN flags:** 5y window = post-COVID era. "
+        "За по-дълъг исторически контекст (sovereign crisis 2011, GFC 2008) виж "
+        "explorer данните или направи отделен query."
+    )
+    parts.append("")
+
+    for i, a in enumerate(anomaly_report.top, 1):
+        parts.append(_series_fact_card(a.series_key, snapshot, today, history_years, rank=i, anomaly=a))
+        parts.append("")
+    return "\n".join(parts)
+
+
+def _series_fact_card(
+    sid: str,
+    snapshot: dict,
+    today: date,
+    history_years: int,
+    rank: Optional[int] = None,
+    anomaly=None,
+) -> str:
+    """Markdown fact card за единична серия с full context."""
+    meta = SERIES_CATALOG.get(sid, {})
+    series = snapshot.get(sid, pd.Series(dtype=float))
+
+    title = meta.get("name_bg", sid)
+    rank_prefix = f"#{rank} " if rank else ""
+
+    if series.empty:
+        return f"### {rank_prefix}`{sid}` — {title}\n_(няма данни в snapshot-а)_"
+
+    s = series.dropna().sort_index()
+    last_value = float(s.iloc[-1])
+    last_date_obj = s.index[-1].date() if hasattr(s.index[-1], "date") else None
+    last_date_str = str(last_date_obj) if last_date_obj else str(s.index[-1])[:10]
+
+    kind = change_kind(sid, meta)
+
+    try:
+        long_periods = _infer_yoy_periods(s)
+    except Exception:
+        long_periods = 12
+    try:
+        long_chg_series = compute_change(s, kind, long_periods)
+        short_chg_series = compute_change(s, kind, 1)
+        long_chg = long_chg_series.iloc[-1] if not long_chg_series.empty else float("nan")
+        short_chg = short_chg_series.iloc[-1] if not short_chg_series.empty else float("nan")
+    except Exception:
+        long_chg = float("nan")
+        short_chg = float("nan")
+
+    # 5y window stats
+    cutoff = pd.Timestamp(last_date_str) - pd.DateOffset(years=history_years)
+    s_hist = s[s.index >= cutoff]
+    if len(s_hist) > 1:
+        hist_min = float(s_hist.min())
+        hist_max = float(s_hist.max())
+        hist_median = float(s_hist.median())
+        below_count = int((s_hist < last_value).sum())
+        pct_rank = below_count / len(s_hist) * 100
+        std = float(s_hist.std())
+        mean = float(s_hist.mean())
+        z = (last_value - mean) / std if std != 0 else 0.0
+    else:
+        hist_min = hist_max = hist_median = pct_rank = z = float("nan")
+
+    tail = s.tail(FACT_CARD_TAIL)
+
+    lines = []
+    lines.append(f"### {rank_prefix}`{sid}` — {title}")
+    lines.append("")
+
+    # Identification (ECB or Eurostat)
+    source = meta.get("source", "?")
+    source_id = meta.get("id", sid)
+    lens_str = " / ".join(meta.get("lens", []))
+    peer_str = meta.get("peer_group", "")
+    tags = meta.get("tags") or []
+    tags_str = " · ".join(f"`{t}`" for t in tags) if tags else ""
+    src_label = {"ecb": "ECB", "eurostat": "Eurostat", "derived": "Derived"}.get(source, source.upper())
+
+    lines.append(
+        f"- **{src_label}:** `{source_id}` · **Тема:** {lens_str} · **Peer:** {peer_str}"
+        + (f" · **Тагове:** {tags_str}" if tags_str else "")
+    )
+
+    # Period-aware staleness (Phase 8d)
+    release_schedule = meta.get("release_schedule", "monthly")
+    if last_date_obj:
+        stale_status, stale_age = assess_data_staleness(
+            last_date_str, release_schedule, today=today,
+        )
+        if stale_status == "DATA_STALE":
+            period_lag = PERIOD_LENGTH_DAYS.get(release_schedule, 30) + RELEASE_LAG_DAYS.get(release_schedule, 30)
+            lines.append(
+                f"- ❌ **Staleness:** очакваният next release беше преди ~{stale_age - period_lag:.0f} дни "
+                f"(threshold: {period_lag}d за {release_schedule})"
+            )
+        elif release_schedule == "quarterly" and stale_age is not None:
+            lines.append(
+                f"- ℹ **Quarterly note:** EA quarterly има 50d release lag. "
+                f"Last_obs = {last_date_str}; следващ release около "
+                f"{(last_date_obj + timedelta(days=PERIOD_LENGTH_DAYS['quarterly'] + RELEASE_LAG_DAYS['quarterly'])).isoformat()}."
+            )
+
+    # Nominal warning
+    if sid in NOMINAL_SERIES_NEED_DEFLATION:
+        lines.append(
+            f"- ⚠ **Nominal:** тази серия е nominal — за thesis-claim "
+            "за real growth, виж секция 1.5 (Cross-spreads → Real wages/M3/lending)"
+        )
+
+    # SPF anchored band link
+    if sid == FORWARD_INFL_KEY:
+        lines.append("- 🎯 **Anchored band** — виж секция 1.5 за empirical thresholds.")
+
+    # Current state line
+    extreme_marker = ""
+    if anomaly:
+        if anomaly.is_new_extreme and anomaly.new_extreme_direction == "max":
+            extreme_marker = " · **NEW 5Y MAX** ⚠"
+        elif anomaly.is_new_extreme and anomaly.new_extreme_direction == "min":
+            extreme_marker = " · **NEW 5Y MIN** ⚠"
+
+    pct_str = f"{pct_rank:.0f}%" if not math.isnan(pct_rank) else "—"
+    lines.append(
+        f"- **Текущо ({last_date_str}):** {fmt_value(last_value)} · "
+        f"**z** {z:+.2f} · **percentile (5y)** {pct_str}"
+        + (f" · **Δ direction** {anomaly.direction}" if anomaly else "")
+        + extreme_marker
+    )
+
+    # Change line
+    long_lbl = "Δ1y" if long_periods >= 12 else f"Δ{long_periods}p"
+    lines.append(
+        f"- **Промяна:** {long_lbl} {fmt_change(long_chg, kind)} · "
+        f"Δ short {fmt_change(short_chg, kind)} (display: {kind})"
+    )
+
+    # 5y range
+    if not (math.isnan(hist_min) or math.isnan(hist_max)):
+        lines.append(
+            f"- **5y range:** мин {fmt_value(hist_min)} · "
+            f"медиана {fmt_value(hist_median)} · макс {fmt_value(hist_max)}"
+        )
+
+    # Last readings
+    lines.append(f"- **Последни {len(tail)} readings:**")
+    for dt, val in tail.items():
+        d_str = dt.date() if hasattr(dt, "date") else str(dt)[:10]
+        lines.append(f"  - {d_str} → {fmt_value(float(val))}")
+
+    # Narrative hint
+    hint = meta.get("narrative_hint") or ""
+    if hint:
+        lines.append(f"- **Тълкуване (от каталога):** {hint}")
+
+    return "\n".join(lines)
+
+
+# ============================================================
+# SECTION 5: METHODOLOGY (compact)
+# ============================================================
+
+def _render_methodology_compact() -> str:
+    return """## 5. Методология (compact)
+
+- **Breadth ↑** — % серии в peer group с положителен 1-периоден momentum. Прагове: >60% разширяване, <40% свиване, между = смесено.
+- **Breadth |z|>2** — % серии в групата със стойност >2 стандартни отклонения от 5y mean (екстремна).
+- **z-score** — стандартизирана отдалеченост от 5y средна. |z|>2 = ~5% от времето в нормална дистрибуция.
+- **Percentile (5y)** — къде стои текущата стойност в 5-годишното разпределение (0% = нов 5y минимум, 100% = нов 5y максимум).
+- **Cross-lens states** — `both_up` / `both_down` / `a_up_b_down` / `a_down_b_up` (divergence) / `transition` (между прагове) / `insufficient_data`.
+- **Display-by-type** — за rate-нива (BUND, BTP, OAT, ECB_DFR, UNRATE) Δ е в bps; за signed индекси (CISS, ESI, confidence) — абсолютна делта; за price levels (HICP, IP, GDP) — %.
+- **Period-aware staleness** — series flagged като DATA_STALE ако last_obs > period_length + release_lag (EU quarterly threshold = 140d, monthly = 60d).
+- **Anchored band (SPF)** — empirical bands derived от 2003-2019 stable era (mean 1.91%, std 0.13pp, n=50). ECB target = 2.00%.
+- **EA-specific cross-lens pairs** — `fragmentation_risk` (BTP-Bund vs ECB rates) и `ecb_transmission` (rates vs bank lending) са EA-уникални; останалите 4 имат US аналози.
+- **Малки peer groups (2 серии)** — 1 серия флипваща = 50pp промяна. Малките групи са по-волатилни в breadth.
+"""
+
+
+# ============================================================
+# PUBLIC API
+# ============================================================
+
 def generate_briefing_context(
     snapshot: dict[str, pd.Series],
-    modules_results: list[dict],
+    lens_reports: dict,
+    cross_report,
+    anomaly_report,
+    today: date,
     output_path: str | Path,
+    history_years: int = HISTORY_YEARS,
 ) -> str:
     """Генерира briefing_context_YYYY-MM-DD.md за LLM analysis.
 
-    Returns: full markdown text. Ako output_path е дадено — записва файла.
+    Args:
+        snapshot: {sid → pd.Series}.
+        lens_reports: {lens → LensBreadthReport}.
+        cross_report: CrossLensDivergenceReport.
+        anomaly_report: AnomalyReport.
+        today: дата за file name + header.
+        output_path: директория за изход (или директно файл — handles both).
+        history_years: 5y window default.
+
+    Returns:
+        Абсолютен path към записания .md файл (str).
     """
-    augmented = _augment_snapshot_with_derived(snapshot)
-
-    parts = [
-        render_header(augmented),
-        render_executive(modules_results),
-        render_themes(modules_results, augmented),
-        render_cross_lens(augmented),
-        render_cross_spreads(augmented),
-        render_anomalies(modules_results, augmented),
-        render_series_fact_cards(augmented),
-        render_methodology(),
+    sections = [
+        _render_header(today, lens_reports, cross_report, anomaly_report),
+        _render_executive_summary(lens_reports, anomaly_report),
+        _render_cross_spreads(snapshot, today, history_years),
+        _render_themes(lens_reports),
+        _render_cross_lens(cross_report),
+        _render_anomalies(anomaly_report, snapshot, today, history_years),
+        _render_methodology_compact(),
     ]
-    text = "\n".join(parts)
+    body = "\n\n".join(sections)
 
-    output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(text, encoding="utf-8")
-    return text
+    out_path = Path(output_path)
+    if out_path.suffix == ".md":
+        # Direct file path
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(body, encoding="utf-8")
+        return str(out_path.resolve())
+    else:
+        # Directory — generate filename
+        out_path.mkdir(parents=True, exist_ok=True)
+        out_file = out_path / f"briefing_context_{today.isoformat()}.md"
+        out_file.write_text(body, encoding="utf-8")
+        return str(out_file.resolve())

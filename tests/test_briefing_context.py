@@ -1,7 +1,8 @@
-"""Tests за export/briefing_context.py — Phase 9 markdown export."""
+"""Tests за export/briefing_context.py — US-style structure (Phase 9 rewrite)."""
 from __future__ import annotations
 
 import sys
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -12,18 +13,22 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from analysis.breadth import compute_lens_breadth
+from analysis.divergence import compute_cross_lens_divergence
+from analysis.anomaly import compute_anomalies
+from catalog.series import ALLOWED_LENSES
 from export.briefing_context import (
+    augment_snapshot_with_derived,
     generate_briefing_context,
-    render_header,
-    render_executive,
-    render_themes,
-    render_cross_lens,
-    render_cross_spreads,
-    render_anomalies,
-    render_series_fact_cards,
-    render_methodology,
-    _augment_snapshot_with_derived,
-    _peer_group_direction,
+    _render_header,
+    _render_executive_summary,
+    _render_themes,
+    _render_cross_lens,
+    _render_cross_spreads,
+    _render_anomalies,
+    _render_methodology_compact,
+    _yoy_pct,
+    _percentile_5y,
 )
 
 
@@ -41,18 +46,30 @@ def quarterly(values, end="2026-04-01"):
 
 @pytest.fixture
 def sample_snapshot():
+    """Comprehensive snapshot за integration tests."""
+    np.random.seed(42)
     return {
         "EA_UNRATE": monthly(np.linspace(8.0, 6.5, 60)),
+        "EA_LFS_EMP": quarterly(np.linspace(70.0, 75.0, 20)),
+        "EA_EMPLOYMENT_EXP": monthly(np.linspace(95.0, 98.0, 12)),
+        "EA_COMP_PER_EMPLOYEE": quarterly(np.linspace(400_000, 500_000, 20)),
         "EA_HICP_HEADLINE": monthly(np.linspace(0.5, 2.5, 60)),
-        "EA_HICP_CORE": monthly(np.linspace(0.8, 2.8, 60)),
+        "EA_HICP_CORE": monthly(np.linspace(0.8, 2.3, 60)),
         "EA_HICP_SERVICES": monthly(np.linspace(1.0, 3.5, 60)),
         "EA_HICP_ENERGY": monthly(np.linspace(-1.0, 2.0, 60)),
         "EA_HICP_FOOD": monthly(np.linspace(0.5, 3.0, 60)),
+        "EA_SPF_HICP_LT": quarterly([2.0] * 20),
+        "EA_PPI_INTERMEDIATE": monthly(np.linspace(100, 130, 60)),
         "EA_IP": monthly(np.linspace(95, 105, 60)),
         "EA_RETAIL_VOL": monthly(np.linspace(95, 110, 60)),
         "EA_BUILDING_PRODUCTION": monthly(np.linspace(95, 100, 60)),
-        "EA_GDP_QOQ": quarterly(np.linspace(40000, 42000, 20)),
-        "EA_ESI": monthly([95.0] * 60),
+        "EA_PERMIT_DW": monthly(np.linspace(100, 95, 60)),
+        "EA_GDP_QOQ": quarterly(np.linspace(40_000, 42_000, 20)),
+        "EA_ESI": monthly(np.full(12, 95.0) + np.random.randn(12) * 2),
+        "EA_INDUSTRY_CONF": monthly(np.full(12, -5.0) + np.random.randn(12)),
+        "EA_CONSTRUCTION_CONF": monthly(np.full(12, -5.0) + np.random.randn(12)),
+        "EA_RETAIL_CONF": monthly(np.full(12, -3.0) + np.random.randn(12)),
+        "EA_CONSUMER_CONF": monthly(np.linspace(-15, -10, 60)),
         "EA_CISS": monthly(np.linspace(0.05, 0.15, 60)),
         "EA_M3_YOY": monthly(np.linspace(8.0, 3.0, 60)),
         "EA_BANK_LOANS_NFC": monthly(np.linspace(2.0, 1.0, 60)),
@@ -64,173 +81,237 @@ def sample_snapshot():
         "DE_10Y": monthly(np.linspace(0.5, 2.5, 60)),
         "ECB_DFR": monthly(np.linspace(0.0, 2.0, 60)),
         "ECB_MRO": monthly(np.linspace(0.5, 2.5, 60)),
+        "ECB_MLF": monthly(np.linspace(1.0, 3.0, 60)),
         "ECB_BALANCE_SHEET": monthly(np.linspace(2_000_000, 7_000_000, 60)),
-        "EA_SPF_HICP_LT": quarterly([2.0] * 20),
-        "EA_PPI_INTERMEDIATE": monthly(np.linspace(100, 130, 60)),
-        "EA_COMP_PER_EMPLOYEE": quarterly(np.linspace(400_000, 500_000, 20)),
     }
 
 
 @pytest.fixture
-def sample_modules_results():
-    return [
-        {"module": "labor",     "label": "Пазар на труда", "icon": "👷",
-         "composite": 75.0, "regime": "ЗДРАВ", "indicators": {
-             "EA_UNRATE": {"score": 80.0, "z_score": 1.7, "name": "UNRATE"},
-         }},
-        {"module": "inflation", "label": "Инфлация", "icon": "🔥",
-         "composite": 65.0, "regime": "ЕЛЕВИРАНА", "indicators": {
-             "EA_HICP_CORE": {"score": 70.0, "z_score": 1.6, "name": "Core"},
-         }},
-        {"module": "growth",    "label": "Растеж и активност", "icon": "📈",
-         "composite": 50.0, "regime": "СТАГНАЦИЯ", "indicators": {}},
-        {"module": "credit",    "label": "Финансови условия и кредит", "icon": "🏛",
-         "composite": 45.0, "regime": "НЕУТРАЛНИ", "indicators": {}},
-        {"module": "ecb",       "label": "ЕЦБ парична политика", "icon": "🏦",
-         "composite": 60.0, "regime": "НЕУТРАЛНА", "indicators": {}},
-    ]
+def augmented_snapshot(sample_snapshot):
+    return augment_snapshot_with_derived(sample_snapshot)
+
+
+@pytest.fixture
+def lens_reports(augmented_snapshot):
+    return {lens: compute_lens_breadth(lens, augmented_snapshot) for lens in ALLOWED_LENSES}
+
+
+@pytest.fixture
+def cross_report(augmented_snapshot):
+    return compute_cross_lens_divergence(augmented_snapshot)
+
+
+@pytest.fixture
+def anomaly_report(augmented_snapshot):
+    return compute_anomalies(augmented_snapshot, z_threshold=2.0, top_n=10)
+
+
+# ── Augmentation ──────────────────────────────────────────────
+
+def test_augment_snapshot_adds_btp_oat_spreads(sample_snapshot):
+    aug = augment_snapshot_with_derived(sample_snapshot)
+    assert "EA_BTP_BUND_SPREAD" in aug
+    assert "EA_OAT_BUND_SPREAD" in aug
+    # Latest BTP = IT.last - DE.last = 4.5 - 2.5 = 2.0
+    assert aug["EA_BTP_BUND_SPREAD"].iloc[-1] == pytest.approx(2.0, abs=0.01)
+
+
+def test_augment_snapshot_no_de_returns_unchanged():
+    snap = {"IT_10Y": monthly([5.0])}
+    aug = augment_snapshot_with_derived(snap)
+    assert "EA_BTP_BUND_SPREAD" not in aug
 
 
 # ── Section renderers ─────────────────────────────────────────
 
-def test_render_header_includes_required_metadata(sample_snapshot):
-    text = render_header(sample_snapshot)
+def test_render_header_includes_required_metadata(sample_snapshot, lens_reports, cross_report, anomaly_report):
+    text = _render_header(date(2026, 4, 30), lens_reports, cross_report, anomaly_report)
     assert "Briefing Context" in text
-    assert "Catalog:" in text
-    assert "Snapshot:" in text
-    assert str(len(sample_snapshot)) in text
-
-
-def test_render_executive_has_table(sample_modules_results):
-    text = render_executive(sample_modules_results)
-    assert "Композитен Macro Score" in text
-    assert "| Тема |" in text  # markdown table header (Phase 10 rename)
-    assert "Пазар на труда" in text
-    assert "Инфлация" in text
-    assert "75.0" in text or "75" in text  # composite
-
-
-def test_render_executive_handles_empty():
-    text = render_executive([])
-    assert "Executive Summary" in text
-
-
-def test_render_themes_synthesizes_from_modules(sample_modules_results):
-    text = render_themes(sample_modules_results, {})
-    assert "ЗДРАВ" in text or "ЕЛЕВИРАНА" in text
-
-
-def test_render_cross_lens_processes_all_pairs(sample_snapshot):
-    augmented = _augment_snapshot_with_derived(sample_snapshot)
-    text = render_cross_lens(augmented)
-    # All 6 pair names трябва да присъстват
-    assert "Стагфлационен тест" in text
-    assert "Трансмисия на ЕЦБ" in text
-    assert "Фрагментационен риск" in text
-    assert "Закотвеност" in text
-    assert "Pipeline" in text
-    assert "Очаквания срещу твърди" in text
-
-
-def test_render_cross_spreads_includes_real_dfr(sample_snapshot):
-    text = render_cross_spreads(sample_snapshot)
-    assert "Реална policy rate" in text
-    assert "Yield curve" in text
-
-
-def test_render_cross_spreads_includes_anchored_band(sample_snapshot):
-    text = render_cross_spreads(sample_snapshot)
-    assert "anchoring" in text.lower() or "anchored" in text.lower()
-
-
-def test_render_anomalies_lists_extreme(sample_modules_results):
-    text = render_anomalies(sample_modules_results, {})
-    # Z=1.7 е > 1.5 → трябва да се появи
-    assert "EA_UNRATE" in text or "EA_HICP_CORE" in text
-
-
-def test_render_anomalies_handles_no_extremes():
-    text = render_anomalies([{"module": "labor", "indicators": {}}], {})
+    assert "2026-04-30" in text
+    assert "Eurozone" in text
+    assert "Брой теми:" in text
+    assert "Cross-lens двойки:" in text
     assert "Аномалии" in text
 
 
-def test_render_series_fact_cards_groups_by_lens(sample_snapshot):
-    text = render_series_fact_cards(sample_snapshot)
-    # Лещите трябва да са секции
-    assert "Пазар на труда" in text
-    assert "Инфлация" in text
-    assert "Финансови условия" in text
+def test_render_executive_no_scores(lens_reports, anomaly_report):
+    """Executive Summary трябва да показва direction + breadth %, БЕЗ composite scores."""
+    text = _render_executive_summary(lens_reports, anomaly_report)
+    assert "Executive Summary" in text
+    assert "| Тема |" in text
+    assert "Посока" in text
+    assert "Breadth" in text
+    # Не трябва да има composite score numbers (X.X / X.X format)
+    assert "Composite" not in text
+    assert "regime" not in text.lower()
 
 
-def test_render_series_fact_cards_includes_metadata(sample_snapshot):
-    text = render_series_fact_cards(sample_snapshot)
-    assert "Source:" in text
-    assert "Peer group:" in text
-    assert "Transform:" in text
-    assert "is_rate:" in text
+def test_render_themes_uses_peer_group_tables(lens_reports):
+    text = _render_themes(lens_reports)
+    assert "Темите по peer group" in text
+    # Trябва да има peer_group rows за всяка lens
+    assert "Peer group" in text
+    assert "breadth ↑" in text
+    # И петте теми
+    for label in ["Пазар на труда", "Инфлация", "Растеж", "Финансови условия", "ЕЦБ"]:
+        assert label in text
 
 
-def test_render_series_fact_cards_flags_nominal_series(sample_snapshot):
-    text = render_series_fact_cards(sample_snapshot)
-    # EA_COMP_PER_EMPLOYEE е в NOMINAL_SERIES_NEED_DEFLATION
-    assert "Nominal series" in text or "deflation" in text
+def test_render_cross_lens_lists_all_5_states(cross_report):
+    text = _render_cross_lens(cross_report)
+    assert "Cross-Lens Divergence" in text
+    # Всички 6 pair names
+    for pair_name in ["Стагфлационен тест", "Трансмисия на ЕЦБ", "Фрагментационен риск",
+                       "Закотвеност", "Pipeline", "Очаквания срещу твърди"]:
+        assert pair_name in text
+    # 5-state interpretations присъстват
+    assert "Всички възможни състояния" in text
+    assert "both_up" in text
+    assert "both_down" in text
+    assert "a_up_b_down" in text
+    assert "a_down_b_up" in text
+    assert "transition" in text
+
+
+def test_render_cross_lens_marks_active_state(cross_report):
+    text = _render_cross_lens(cross_report)
+    # Поне един pair трябва да има "← АКТИВНО" marker
+    assert "АКТИВНО" in text
+
+
+def test_render_cross_spreads_includes_real_dfr(augmented_snapshot):
+    text = _render_cross_spreads(augmented_snapshot, date(2026, 4, 30), 5)
+    assert "Cross-spreads" in text
+    assert "Real DFR" in text
+    assert "DFR" in text and "SPF" in text
+
+
+def test_render_cross_spreads_includes_real_wages(augmented_snapshot):
+    text = _render_cross_spreads(augmented_snapshot, date(2026, 4, 30), 5)
+    assert "Real wages" in text
+
+
+def test_render_cross_spreads_includes_real_lending(augmented_snapshot):
+    text = _render_cross_spreads(augmented_snapshot, date(2026, 4, 30), 5)
+    assert "Real bank lending" in text
+
+
+def test_render_cross_spreads_includes_yield_curve(augmented_snapshot):
+    text = _render_cross_spreads(augmented_snapshot, date(2026, 4, 30), 5)
+    assert "Yield curve" in text
+    assert "Bund 10Y-2Y" in text
+
+
+def test_render_cross_spreads_includes_sovereign_spreads(augmented_snapshot):
+    text = _render_cross_spreads(augmented_snapshot, date(2026, 4, 30), 5)
+    assert "BTP-Bund" in text
+    assert "OAT-Bund" in text
+    assert "fragmentation" in text.lower()
+    assert "TPI" in text
+
+
+def test_render_cross_spreads_includes_anchored_band(augmented_snapshot):
+    text = _render_cross_spreads(augmented_snapshot, date(2026, 4, 30), 5)
+    assert "Anchored band" in text
+    assert "EA_SPF_HICP_LT" in text
+    assert "stable era 2003-2019" in text
+
+
+def test_render_cross_spreads_includes_pipeline(augmented_snapshot):
+    text = _render_cross_spreads(augmented_snapshot, date(2026, 4, 30), 5)
+    assert "PPI Intermediate" in text
+    assert "HICP Core" in text
+
+
+def test_render_anomalies_with_extreme(augmented_snapshot, anomaly_report):
+    text = _render_anomalies(anomaly_report, augmented_snapshot, date(2026, 4, 30), 5)
+    assert "Top Anomalies" in text
 
 
 def test_render_methodology_has_required_sections():
-    text = render_methodology()
-    assert "Methodology" in text
-    assert "Score" in text
-    assert "is_rate" in text
-    assert "anchored" in text or "Anchored" in text
-    assert "Limitations" in text
+    text = _render_methodology_compact()
+    assert "Методология" in text
+    assert "Breadth" in text
+    assert "z-score" in text
+    assert "Anchored band" in text
+
+
+# ── Helpers ───────────────────────────────────────────────────
+
+def test_yoy_pct_with_monthly_data():
+    s = monthly(np.linspace(100, 110, 24))  # 10% growth over 24 months
+    yoy = _yoy_pct(s)
+    assert yoy is not None
+    assert yoy > 0  # positive growth
+
+
+def test_yoy_pct_returns_none_for_short_series():
+    s = monthly([100.0, 101.0])
+    yoy = _yoy_pct(s)
+    assert yoy is None
+
+
+def test_percentile_5y(augmented_snapshot):
+    pct = _percentile_5y(augmented_snapshot["EA_HICP_CORE"])
+    assert pct is not None
+    assert 0 <= pct <= 100
 
 
 # ── End-to-end ────────────────────────────────────────────────
 
-def test_generate_briefing_context_writes_file(tmp_path, sample_snapshot, sample_modules_results):
+def test_generate_briefing_context_writes_file(
+    tmp_path, augmented_snapshot, lens_reports, cross_report, anomaly_report,
+):
     output = tmp_path / "test_brief_ctx.md"
     text = generate_briefing_context(
-        snapshot=sample_snapshot,
-        modules_results=sample_modules_results,
+        snapshot=augmented_snapshot,
+        lens_reports=lens_reports,
+        cross_report=cross_report,
+        anomaly_report=anomaly_report,
+        today=date(2026, 4, 30),
         output_path=output,
     )
-    assert output.exists()
-    assert len(text) > 1000  # минимум substantive content
-    written = output.read_text(encoding="utf-8")
-    assert written == text
+    assert Path(text).exists()
+    written = Path(text).read_text(encoding="utf-8")
+    assert len(written) > 2000  # substantive content
+
+    # Sanity-check sections present
+    assert "## 1. Executive Summary" in written
+    assert "## 1.5 Cross-spreads" in written
+    assert "## 2. Темите по peer group" in written
+    assert "## 3. Cross-Lens Divergence" in written
+    assert "## 4. Top Anomalies" in written
+    assert "## 5. Методология" in written
 
 
-def test_generate_briefing_context_creates_parent_dir(tmp_path, sample_snapshot, sample_modules_results):
+def test_generate_briefing_context_creates_parent_dir(
+    tmp_path, augmented_snapshot, lens_reports, cross_report, anomaly_report,
+):
     nested = tmp_path / "subdir" / "ctx.md"
     generate_briefing_context(
-        snapshot=sample_snapshot,
-        modules_results=sample_modules_results,
+        snapshot=augmented_snapshot,
+        lens_reports=lens_reports,
+        cross_report=cross_report,
+        anomaly_report=anomaly_report,
+        today=date(2026, 4, 30),
         output_path=nested,
     )
     assert nested.exists()
 
 
-# ── Helpers ───────────────────────────────────────────────────
-
-def test_augment_snapshot_adds_btp_oat_spreads(sample_snapshot):
-    augmented = _augment_snapshot_with_derived(sample_snapshot)
-    assert "EA_BTP_BUND_SPREAD" in augmented
-    assert "EA_OAT_BUND_SPREAD" in augmented
-    # Latest BTP spread = IT.last - DE.last = 4.5 - 2.5 = 2.0
-    assert augmented["EA_BTP_BUND_SPREAD"].iloc[-1] == pytest.approx(2.0, abs=0.01)
-
-
-def test_augment_snapshot_no_de_returns_unchanged():
-    snap = {"IT_10Y": monthly([5.0])}
-    augmented = _augment_snapshot_with_derived(snap)
-    assert "EA_BTP_BUND_SPREAD" not in augmented
-
-
-def test_peer_group_direction_up_when_all_rising(sample_snapshot):
-    # core_measures = HICP_CORE, HICP_SERVICES — и двете растат
-    direction = _peer_group_direction(sample_snapshot, "core_measures")
-    assert direction in ("up", "mostly_up")
-
-
-def test_peer_group_direction_returns_none_if_no_data():
-    assert _peer_group_direction({}, "core_measures") is None
+def test_generate_briefing_context_no_composite_scores_in_output(
+    tmp_path, augmented_snapshot, lens_reports, cross_report, anomaly_report,
+):
+    """User feedback: composite scores са излишни. Output не трябва да ги съдържа."""
+    output = tmp_path / "ctx.md"
+    text = generate_briefing_context(
+        snapshot=augmented_snapshot,
+        lens_reports=lens_reports,
+        cross_report=cross_report,
+        anomaly_report=anomaly_report,
+        today=date(2026, 4, 30),
+        output_path=output,
+    )
+    # NO composite score values като "75.0", "Composite", "regime"
+    assert "Composite Macro Score" not in text
+    assert "| Composite |" not in text  # старата таблица header
