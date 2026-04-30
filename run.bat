@@ -16,13 +16,14 @@ echo ============================================================
 echo   eu-macro-dashboard
 echo ============================================================
 echo.
-echo   1. Data status         (бърза проверка кои серии са свежи)
-echo   2. Briefing - бърз      (auto-refresh stale + briefing)
-echo   3. Briefing - пълен     (auto-refresh + analogs + journal)
-echo   4. Refresh данни...     (отделно меню за refresh)
-echo   5. Run tests
-echo   6. Open output folder
-echo   7. Git status
+echo   1. Data status              (бърза проверка кои серии са свежи)
+echo   2. Briefing - бърз           (auto-refresh stale + briefing)
+echo   3. Briefing - пълен          (auto-refresh + analogs + journal)
+echo   4. Export Claude context     (md за дълбок LLM анализ)
+echo   5. Refresh данни...           (отделно меню за refresh)
+echo   6. Run tests
+echo   7. Open output folder
+echo   8. Git status
 echo.
 echo   0. Exit
 echo.
@@ -31,10 +32,11 @@ set /p choice="Избор: "
 if "%choice%"=="1" goto STATUS
 if "%choice%"=="2" goto BRIEF_QUICK
 if "%choice%"=="3" goto BRIEF_FULL
-if "%choice%"=="4" goto REFRESH_MENU
-if "%choice%"=="5" goto TESTS
-if "%choice%"=="6" goto OPEN_OUTPUT
-if "%choice%"=="7" goto GIT_STATUS
+if "%choice%"=="4" goto EXPORT_CONTEXT
+if "%choice%"=="5" goto REFRESH_MENU
+if "%choice%"=="6" goto TESTS
+if "%choice%"=="7" goto OPEN_OUTPUT
+if "%choice%"=="8" goto GIT_STATUS
 if "%choice%"=="0" exit /b 0
 goto MENU
 
@@ -61,6 +63,15 @@ echo.
 echo --- Running: python run.py --briefing --with-analogs --with-journal
 echo.
 python run.py --briefing --with-analogs --with-journal
+echo.
+pause
+goto MENU
+
+:EXPORT_CONTEXT
+echo.
+echo --- Running: python run.py --export-context
+echo.
+python run.py --export-context
 echo.
 pause
 goto MENU
