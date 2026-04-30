@@ -80,5 +80,46 @@ MACRO_REGIMES = [
 ]
 
 
+# ─── Methodology constants (Phase 8) ─────────────────────────────────────────
+
+# Empirical anchored zones — derived from stable-era SPF data (2003-2019).
+# See scripts/sandbox/research_spf_anchored.py за derivation.
+#
+# EA_SPF_HICP_LT (long-term inflation expectations, % YoY):
+#   Stable era 2003-2019: mean=1.91, std=0.128 (n=50 quarterly obs)
+#   ECB target: 2% (single mandate, post-2003)
+#
+# Bands:
+#   tightly_anchored: ±0.5σ от историческия mean
+#   anchored:         ±1σ — статистически нормално разпределение
+#   drifting:         ±1σ до ±2σ — warning zone
+#   de_anchored:      beyond ±2σ — credibility risk
+ANCHORED_ZONES: dict[str, dict] = {
+    "EA_SPF_HICP_LT": {
+        "mean":           1.91,
+        "std":            0.13,
+        "tight_band":     (1.85, 1.97),  # mean ± 0.5σ
+        "anchored_band":  (1.78, 2.04),  # mean ± 1σ
+        "drift_band":     (1.65, 2.17),  # mean ± 2σ — beyond = de-anchored
+        "ecb_target":     2.00,
+        "stable_era":     "2003-2019",
+        "n_observations": 50,
+    },
+}
+
+# Nominal series които изискват deflation за real-rate анализ.
+# Used by analysis/cross_spreads.compute_real_growth_series.
+NOMINAL_SERIES_NEED_DEFLATION: list[str] = [
+    "EA_COMP_PER_EMPLOYEE",  # nominal compensation → real wage growth
+]
+
+# Cross-reference SIDs за derived computations.
+CORE_DEFLATOR_KEY = "EA_HICP_CORE"      # дефлатор за nominal → real conversion
+POLICY_RATE_KEY = "ECB_DFR"             # binding policy rate (post-2014)
+FORWARD_INFL_KEY = "EA_SPF_HICP_LT"     # forward inflation expectation
+NOMINAL_10Y_KEY = "EA_BUND_10Y"         # nominal yield benchmark
+NOMINAL_2Y_KEY = "EA_BUND_2Y"           # short-end nominal yield
+
+
 # ─── Изходна папка ───────────────────────────────────────────────────────────
 OUTPUT_DIR = "output"
