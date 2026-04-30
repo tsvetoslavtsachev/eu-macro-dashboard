@@ -404,15 +404,45 @@ def _render_footer(today: date, n_series: int, n_modules: int) -> str:
     return f"""
 <footer>
   <h2>Методология</h2>
-  <ul>
-    <li><strong>Source:</strong> ECB Statistical Data Warehouse + Eurostat REST API (без API ключ)</li>
-    <li><strong>Лещи:</strong> 5 (labor, inflation, growth, credit, ECB) — {n_modules} активни модула</li>
-    <li><strong>Score:</strong> percentile rank спрямо 1999+ исторически разпределение (EMU era)</li>
-    <li><strong>Композитен macro score:</strong> weighted average по config.MODULE_WEIGHTS
-        (inflation 30%, credit 20%, growth 20%, labor 15%, ECB 15%)</li>
-    <li><strong>Caveats:</strong> v1 — {n_series} серии; пo-къса EA история (1999) от US (1970+);
-        sovereign spread данните още не са derived (Phase 3.5)</li>
-  </ul>
+  <details class="method">
+    <summary><strong>Източници</strong></summary>
+    <p>ECB Statistical Data Warehouse + Eurostat REST API (без API ключ).
+    Adaptive cache TTL по release schedule.</p>
+  </details>
+  <details class="method">
+    <summary><strong>Теми (5)</strong></summary>
+    <p>labor, inflation, growth, credit, ECB — {n_modules} активни модула в текущия brief.
+    Всяка тема има собствен composite (0-100), regime label и breakdown по peer_groups.</p>
+  </details>
+  <details class="method">
+    <summary><strong>Score (0-100)</strong></summary>
+    <p>Percentile rank спрямо 1999+ исторически разпределение (EMU era).
+    Висок score = top-of-history. Invert flag обръща семантиката за "lower is better"
+    series (UNRATE, M3 свиване, etc.).</p>
+  </details>
+  <details class="method">
+    <summary><strong>Композитен macro score</strong></summary>
+    <p>Weighted average по config.MODULE_WEIGHTS:
+    inflation 30%, credit 20%, growth 20%, labor 15%, ECB 15%.</p>
+  </details>
+  <details class="method">
+    <summary><strong>Sovereign spreads</strong></summary>
+    <p>BTP-Bund (IT-DE), OAT-Bund (FR-DE) — derived в credit модул (Phase 1.5).
+    BTP > 1.5pp = висок stress; > 0.8pp = елевиран.</p>
+  </details>
+  <details class="method">
+    <summary><strong>Anchored zones (SPF)</strong></summary>
+    <p>Empirical bands от 2003-2019 stable era (mean 1.91%, std 0.13pp, n=50):
+    tight ±0.5σ, anchored ±1σ [1.78, 2.04], drifting ±2σ, de-anchored beyond.
+    ECB target reference: 2.00%.</p>
+  </details>
+  <details class="method">
+    <summary><strong>Caveats и ограничения</strong></summary>
+    <p>v1 — {n_series} серии; пo-къса EA история (1999) от US (1970+);
+    DG ECFIN sentiment series имат само 12mo (teibs010/020/030);
+    SPF е quarterly (forward-fill за monthly join);
+    yield curve = 10Y-2Y (10Y-3M не е в catalog).</p>
+  </details>
   <p class="generated">Генериран на {today.strftime('%d %B %Y, %H:%M')} ·
      <a href="https://github.com/tsvetoslavtsachev/eu-macro-dashboard">eu-macro-dashboard</a></p>
 </footer>
@@ -469,6 +499,10 @@ footer li { margin-bottom: 4px; }
 footer .generated { color: #888; font-size: 12px; }
 footer a { color: #0066cc; text-decoration: none; }
 footer a:hover { text-decoration: underline; }
+footer details.method { margin: 4px 0; padding: 6px 10px; background: #f7f7f7; border-radius: 4px; }
+footer details.method summary { cursor: pointer; font-weight: normal; padding: 2px 0; }
+footer details.method[open] { background: #fff; border: 1px solid #e0e0e0; }
+footer details.method p { margin: 6px 0 0 16px; color: #444; line-height: 1.5; }
 
 td.anom-z { font-variant-numeric: tabular-nums; font-weight: 600; }
 td.anom-value, td.anom-delta { font-variant-numeric: tabular-nums; text-align: right; }

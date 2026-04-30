@@ -104,7 +104,7 @@ def test_render_header_includes_required_metadata(sample_snapshot):
 def test_render_executive_has_table(sample_modules_results):
     text = render_executive(sample_modules_results)
     assert "Композитен Macro Score" in text
-    assert "| Lens |" in text  # markdown table header
+    assert "| Тема |" in text  # markdown table header (Phase 10 rename)
     assert "Пазар на труда" in text
     assert "Инфлация" in text
     assert "75.0" in text or "75" in text  # composite

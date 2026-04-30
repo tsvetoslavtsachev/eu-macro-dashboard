@@ -130,7 +130,7 @@ def render_executive(modules_results: list[dict]) -> str:
     overall = round(weighted / total_weight, 1) if total_weight else 50.0
 
     lines.append(f"**Композитен Macro Score: {overall}**\n")
-    lines.append("| Lens | Composite | Regime | Серии |")
+    lines.append("| Тема | Composite | Regime | Серии |")
     lines.append("|---|---:|---|---:|")
     for r in modules_results:
         icon = LENS_ICON.get(r["module"], "")
