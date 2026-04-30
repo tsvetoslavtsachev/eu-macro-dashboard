@@ -291,23 +291,16 @@ def cmd_export_context(args) -> int:
 
 
 def cmd_briefing(args) -> int:
-    """Weekly Briefing workflow. Phase 3 (analogs Phase 4, journal Phase 5).
+    """Weekly Briefing workflow — US-style (breadth + direction, без composite scores).
 
     Phase 7: auto-refresh kicks in без --refresh флаг — fetch-ва само stale.
-    --refresh флагът все още прави force-refresh на всички.
     """
     from sources.ecb_adapter import EcbAdapter
     from sources.eurostat_adapter import EurostatAdapter
     from export.weekly_briefing import generate_weekly_briefing
-    import modules.labor as labor_mod
-    import modules.inflation as inflation_mod
-    import modules.growth as growth_mod
-    import modules.credit as credit_mod
-    import modules.ecb as ecb_mod
 
     adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
 
-    # Phase 7: auto-refresh stale серии преди briefing (без force flag)
     if not args.refresh:
         _auto_refresh_stale(adapters, verbose=True)
 
@@ -318,16 +311,6 @@ def cmd_briefing(args) -> int:
         return 1
 
     print(f"\n📦 Snapshot: {len(snapshot)} серии заредени")
-    print("🔬 Изчисляване на модули...")
-
-    modules_results = []
-    for name, mod in [("labor", labor_mod), ("inflation", inflation_mod),
-                      ("growth", growth_mod), ("credit", credit_mod),
-                      ("ecb", ecb_mod)]:
-        try:
-            modules_results.append(mod.run(snapshot))
-        except Exception as e:
-            print(f"   ⚠ {name}: грешка — {e}")
 
     analog_bundle = None
     if args.with_analogs:
@@ -336,7 +319,7 @@ def cmd_briefing(args) -> int:
         try:
             analog_bundle = compute_analog_bundle(snapshot, k=3)
             if analog_bundle is None:
-                print("   ⚠ Недостатъчно история за аналози (необходими 7 dim complete)")
+                print("   ⚠ Недостатъчно история за аналози")
             else:
                 print(f"   ✓ Top analog: {analog_bundle.analogs[0].date.strftime('%Y-%m')} "
                       f"(similarity {analog_bundle.analogs[0].similarity:.2f})")
@@ -358,7 +341,6 @@ def cmd_briefing(args) -> int:
 
     generate_weekly_briefing(
         snapshot=snapshot,
-        modules_results=modules_results,
         output_path=output_path,
         analog_bundle=analog_bundle,
         journal_entries=journal_entries,
