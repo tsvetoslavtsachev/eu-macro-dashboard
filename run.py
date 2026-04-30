@@ -145,6 +145,7 @@ def cmd_modules(args) -> int:
     import modules.labor as labor_mod
     import modules.inflation as inflation_mod
     import modules.growth as growth_mod
+    import modules.credit as credit_mod
     import modules.ecb as ecb_mod
     from config import MODULE_WEIGHTS
 
@@ -162,6 +163,7 @@ def cmd_modules(args) -> int:
         ("labor",     labor_mod),
         ("inflation", inflation_mod),
         ("growth",    growth_mod),
+        ("credit",    credit_mod),
         ("ecb",       ecb_mod),
     ]
 
@@ -235,6 +237,7 @@ def cmd_briefing(args) -> int:
     import modules.labor as labor_mod
     import modules.inflation as inflation_mod
     import modules.growth as growth_mod
+    import modules.credit as credit_mod
     import modules.ecb as ecb_mod
 
     adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
@@ -254,7 +257,8 @@ def cmd_briefing(args) -> int:
 
     modules_results = []
     for name, mod in [("labor", labor_mod), ("inflation", inflation_mod),
-                      ("growth", growth_mod), ("ecb", ecb_mod)]:
+                      ("growth", growth_mod), ("credit", credit_mod),
+                      ("ecb", ecb_mod)]:
         try:
             modules_results.append(mod.run(snapshot))
         except Exception as e:

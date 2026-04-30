@@ -23,29 +23,39 @@ from core.scorer import (
 from config import HISTORY_START
 
 
-# ─── Catalog отговаря на Phase 1 (catalog/series.py) ─────────────
+# ─── Catalog отговаря на Phase 1.5 (catalog/series.py) ─────────────
 SERIES = {
     "EA_UNRATE": {
         "label": "Безработица (EA-21, %)",
         "invert": True,
+        "transform": "level",
         "is_rate": True,
     },
     "EA_LFS_EMP": {
         "label": "Заетост 20-64г (LFS, % от популация)",
         "invert": False,   # висока employment rate = здрав labor
+        "transform": "level",
         "is_rate": True,
     },
     "EA_EMPLOYMENT_EXP": {
         "label": "Очаквания за заетост (3m напред)",
         "invert": False,   # положителни очаквания = здрав labor
+        "transform": "level",
         "is_rate": False,  # balance index, не percentage
+    },
+    "EA_COMP_PER_EMPLOYEE": {
+        "label": "Компенсация на наетите (D1, EA-20, YoY %)",
+        "invert": False,   # ускоряващи заплати = здрав labor (но: stagflation тест)
+        "transform": "yoy_pct",  # raw е level в EUR mln
+        "is_rate": True,
     },
 }
 
 # UNRATE доминира (lagging но broadly available); LFS_EMP е structural;
+# WAGES е forward-looking (важно за stagflation cross-lens);
 # EMPLOYMENT_EXP е forward (но кратка история — малко тегло)
-CYCLICAL_SERIES  = ["EA_UNRATE", "EA_LFS_EMP", "EA_EMPLOYMENT_EXP"]
-CYCLICAL_WEIGHTS = [0.50,         0.35,          0.15]
+CYCLICAL_SERIES  = ["EA_UNRATE", "EA_LFS_EMP", "EA_EMPLOYMENT_EXP", "EA_COMP_PER_EMPLOYEE"]
+CYCLICAL_WEIGHTS = [0.40,         0.25,          0.10,                0.25]
 
 
 # Регими (BG), inverted convention: висок score = здрав labor market
@@ -58,6 +68,17 @@ REGIMES = [
 ]
 
 
+def _apply_transform(series: pd.Series, transform: str) -> pd.Series:
+    """Прилага catalog transform върху raw серия."""
+    if transform == "yoy_pct":
+        return series.pct_change(periods=12).dropna() * 100
+    if transform == "qoq_pct":
+        return series.pct_change(periods=4).dropna() * 100
+    if transform == "mom_pct":
+        return series.pct_change().dropna() * 100
+    return series
+
+
 def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
     """Изчислява Labor lens за EA от snapshot.
 
@@ -68,15 +89,19 @@ def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
         Unified module dict (виж docstring).
     """
     indicators: dict[str, dict] = {}
+    transformed: dict[str, pd.Series] = {}
     for sid, meta in SERIES.items():
         if sid in snapshot and not snapshot[sid].empty:
-            indicators[sid] = score_series(
-                snapshot[sid],
-                history_start=HISTORY_START,
-                invert=meta["invert"],
-                name=meta["label"],
-                is_rate=meta.get("is_rate", False),
-            )
+            ts = _apply_transform(snapshot[sid], meta.get("transform", "level"))
+            transformed[sid] = ts
+            if not ts.empty:
+                indicators[sid] = score_series(
+                    ts,
+                    history_start=HISTORY_START,
+                    invert=meta["invert"],
+                    name=meta["label"],
+                    is_rate=meta.get("is_rate", False),
+                )
 
     composite = _composite(indicators, CYCLICAL_SERIES, CYCLICAL_WEIGHTS)
     regime_label, regime_color = get_regime(composite, REGIMES)
@@ -84,11 +109,11 @@ def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
     sparklines: dict[str, dict] = {}
     hist_context: dict[str, dict] = {}
     for sid in SERIES:
-        if sid in snapshot and not snapshot[sid].empty:
-            sparklines[sid] = build_sparkline(snapshot[sid], months=36)
+        if sid in transformed and not transformed[sid].empty:
+            sparklines[sid] = build_sparkline(transformed[sid], months=36)
             hist_context[sid] = build_historical_context(
-                snapshot[sid],
-                float(snapshot[sid].iloc[-1]),
+                transformed[sid],
+                float(transformed[sid].iloc[-1]),
                 history_start=HISTORY_START,
             )
 

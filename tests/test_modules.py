@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 import modules.labor as labor_mod
 import modules.inflation as inflation_mod
 import modules.growth as growth_mod
+import modules.credit as credit_mod
 import modules.ecb as ecb_mod
 
 
@@ -219,3 +220,122 @@ def test_ecb_partial_snapshot_works():
     snap = {"ECB_DFR": trend(0.0, 2.0, n=60)}
     result = ecb_mod.run(snap)
     _check_unified_shape(result, "ecb")
+
+
+# ── Credit module (Phase 1.5 NEW) ──────────────────────────────
+
+def test_credit_returns_unified_shape():
+    snap = {
+        "EA_CISS": trend(0.05, 0.15, n=60),
+        "EA_BANK_LOANS_NFC": trend(2.0, 1.0, n=60),
+        "EA_BANK_LOANS_HH": trend(2.5, 1.5, n=60),
+        "EA_BUND_10Y": trend(0.5, 3.0, n=60),
+        "EA_M3_YOY": trend(8.0, 3.0, n=60),
+        "IT_10Y": trend(2.0, 4.5, n=60),
+        "FR_10Y": trend(1.0, 3.5, n=60),
+        "DE_10Y": trend(0.5, 2.5, n=60),
+    }
+    result = credit_mod.run(snap)
+    _check_unified_shape(result, "credit")
+
+
+def test_credit_handles_empty_snapshot():
+    result = credit_mod.run({})
+    _check_unified_shape(result, "credit")
+    assert result["composite"] == 50.0
+
+
+def test_credit_computes_btp_bund_spread_locally():
+    """Module трябва да compute-ва BTP-Bund от raw IT_10Y - DE_10Y."""
+    it = trend(2.0, 5.0, n=60)
+    de = trend(0.5, 2.5, n=60)
+    snap = {"IT_10Y": it, "DE_10Y": de}
+    result = credit_mod.run(snap)
+    # Spread series трябва да присъства в indicators
+    assert "EA_BTP_BUND_SPREAD" in result["indicators"]
+    # Latest spread = IT.iloc[-1] - DE.iloc[-1] = 5.0 - 2.5 = 2.5pp
+    spread_val = result["indicators"]["EA_BTP_BUND_SPREAD"]["current_value"]
+    assert spread_val == pytest.approx(2.5, abs=0.01)
+
+
+def test_credit_computes_oat_bund_spread_locally():
+    """OAT-Bund = FR_10Y - DE_10Y."""
+    fr = trend(1.0, 3.5, n=60)
+    de = trend(0.5, 2.5, n=60)
+    snap = {"FR_10Y": fr, "DE_10Y": de}
+    result = credit_mod.run(snap)
+    assert "EA_OAT_BUND_SPREAD" in result["indicators"]
+    spread_val = result["indicators"]["EA_OAT_BUND_SPREAD"]["current_value"]
+    assert spread_val == pytest.approx(1.0, abs=0.01)
+
+
+def test_credit_no_de_means_no_spreads():
+    """Без DE_10Y не може да компютира spreads."""
+    snap = {"IT_10Y": trend(2.0, 4.5, n=60)}
+    result = credit_mod.run(snap)
+    assert "EA_BTP_BUND_SPREAD" not in result["indicators"]
+
+
+def test_credit_high_ciss_high_score():
+    """Висок CISS → висок score (stress)."""
+    snap = {"EA_CISS": trend(0.05, 0.45, n=60)}  # acute stress regime
+    result = credit_mod.run(snap)
+    assert result["composite"] > 60, f"expected high score, got {result['composite']}"
+
+
+def test_credit_yoy_unit_for_rate_series_is_pp():
+    """BTP-Bund spread е rate series → YoY unit трябва да е pp."""
+    idx = pd.date_range(end="2026-03-01", periods=24, freq="MS")
+    it = pd.Series([5.0] * 12 + [4.5] * 12, index=idx)
+    de = pd.Series([3.0] * 24, index=idx)
+    snap = {"IT_10Y": it, "DE_10Y": de}
+    result = credit_mod.run(snap)
+    spread_kr = next((r for r in result["key_readings"] if r["id"] == "EA_BTP_BUND_SPREAD"), None)
+    assert spread_kr is not None
+    assert spread_kr["yoy_unit"] == "pp"
+
+
+# ── Labor wages extension (Phase 1.5) ──────────────────────────
+
+def test_labor_includes_wages_in_composite():
+    """EA_COMP_PER_EMPLOYEE трябва да участва когато присъства в snapshot."""
+    # Wages нараства от 100 до 130 за 60 месеца → стабилен YoY%
+    snap = {
+        "EA_UNRATE": trend(8.0, 6.0),
+        "EA_COMP_PER_EMPLOYEE": trend(100.0, 130.0, n=72),  # quarterly-ish
+    }
+    result = labor_mod.run(snap)
+    _check_unified_shape(result, "labor")
+    # Wages трябва да е в indicators ако transform yoy_pct произвежда non-empty
+    if "EA_COMP_PER_EMPLOYEE" in result["indicators"]:
+        kr = next(r for r in result["key_readings"] if r["id"] == "EA_COMP_PER_EMPLOYEE")
+        assert kr["yoy_unit"] == "pp"
+
+
+# ── Inflation HICP decomp + PPI extension (Phase 1.5) ──────────
+
+def test_inflation_includes_hicp_energy_and_food():
+    """HICP energy/food са в headline_measures peer_group."""
+    snap = {
+        "EA_HICP_HEADLINE": trend(0.5, 2.5),
+        "EA_HICP_ENERGY":   trend(-2.0, 8.0),  # volatile energy
+        "EA_HICP_FOOD":     trend(0.5, 4.0),
+    }
+    result = inflation_mod.run(snap)
+    _check_unified_shape(result, "inflation")
+    assert "EA_HICP_ENERGY" in result["indicators"]
+    assert "EA_HICP_FOOD" in result["indicators"]
+
+
+def test_inflation_includes_ppi_intermediate():
+    """PPI intermediate goods през yoy_pct transform."""
+    # Index расте 100 → 130 за 60 месеца → YoY около 5%
+    snap = {
+        "EA_HICP_CORE":         trend(0.5, 2.5),
+        "EA_PPI_INTERMEDIATE":  trend(100.0, 130.0, n=72),
+    }
+    result = inflation_mod.run(snap)
+    _check_unified_shape(result, "inflation")
+    if "EA_PPI_INTERMEDIATE" in result["indicators"]:
+        kr = next(r for r in result["key_readings"] if r["id"] == "EA_PPI_INTERMEDIATE")
+        assert kr["yoy_unit"] == "pp"

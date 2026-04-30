@@ -26,15 +26,22 @@ from config import HISTORY_START
 
 # ─── Catalog ─────────────────────────────────────────────────────
 SERIES = {
-    "EA_HICP_HEADLINE": {"label": "HICP всички продукти (YoY %)", "invert": False, "is_rate": True},
-    "EA_HICP_CORE":     {"label": "HICP базова (excl. енергия и храни, YoY %)", "invert": False, "is_rate": True},
-    "EA_HICP_SERVICES": {"label": "HICP услуги (YoY %)", "invert": False, "is_rate": True},
+    "EA_HICP_HEADLINE": {"label": "HICP всички продукти (YoY %)", "invert": False, "transform": "level", "is_rate": True},
+    "EA_HICP_CORE":     {"label": "HICP базова (excl. енергия и храни, YoY %)", "invert": False, "transform": "level", "is_rate": True},
+    "EA_HICP_SERVICES": {"label": "HICP услуги (YoY %)", "invert": False, "transform": "level", "is_rate": True},
+    "EA_HICP_ENERGY":   {"label": "HICP енергия (YoY %)", "invert": False, "transform": "level", "is_rate": True},
+    "EA_HICP_FOOD":     {"label": "HICP храни (YoY %)", "invert": False, "transform": "level", "is_rate": True},
+    "EA_PPI_INTERMEDIATE": {"label": "PPI междинни стоки (YoY %)", "invert": False, "transform": "yoy_pct", "is_rate": True},
 }
 
 # Composite weights — services и core тежат повече от headline (ECB practice:
-# подложни компоненти > volatile headline)
-COMPOSITE_SERIES  = ["EA_HICP_HEADLINE", "EA_HICP_CORE", "EA_HICP_SERVICES"]
-COMPOSITE_WEIGHTS = [0.30,                0.40,           0.30]
+# подложни компоненти > volatile headline). Energy + food са по-малки тегла
+# (volatile, не отразяват underlying pressure). PPI е leading 3-6mo.
+COMPOSITE_SERIES  = [
+    "EA_HICP_HEADLINE", "EA_HICP_CORE", "EA_HICP_SERVICES",
+    "EA_HICP_ENERGY", "EA_HICP_FOOD", "EA_PPI_INTERMEDIATE",
+]
+COMPOSITE_WEIGHTS = [0.20, 0.30, 0.25, 0.05, 0.05, 0.15]
 
 
 # Регими: висок percentile = висока инфлация в исторически контекст
@@ -47,18 +54,33 @@ REGIMES = [
 ]
 
 
+def _apply_transform(series: pd.Series, transform: str) -> pd.Series:
+    """Прилага catalog transform върху raw серия."""
+    if transform == "yoy_pct":
+        return series.pct_change(periods=12).dropna() * 100
+    if transform == "qoq_pct":
+        return series.pct_change(periods=4).dropna() * 100
+    if transform == "mom_pct":
+        return series.pct_change().dropna() * 100
+    return series
+
+
 def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
     """Изчислява Inflation lens за EA."""
     indicators: dict[str, dict] = {}
+    transformed: dict[str, pd.Series] = {}
     for sid, meta in SERIES.items():
         if sid in snapshot and not snapshot[sid].empty:
-            indicators[sid] = score_series(
-                snapshot[sid],
-                history_start=HISTORY_START,
-                invert=meta["invert"],
-                name=meta["label"],
-                is_rate=meta.get("is_rate", False),
-            )
+            ts = _apply_transform(snapshot[sid], meta.get("transform", "level"))
+            transformed[sid] = ts
+            if not ts.empty:
+                indicators[sid] = score_series(
+                    ts,
+                    history_start=HISTORY_START,
+                    invert=meta["invert"],
+                    name=meta["label"],
+                    is_rate=meta.get("is_rate", False),
+                )
 
     composite = _composite(indicators, COMPOSITE_SERIES, COMPOSITE_WEIGHTS)
     regime_label, regime_color = get_regime(composite, REGIMES)
@@ -66,11 +88,11 @@ def run(snapshot: dict[str, pd.Series]) -> dict[str, Any]:
     sparklines: dict[str, dict] = {}
     hist_context: dict[str, dict] = {}
     for sid in SERIES:
-        if sid in snapshot and not snapshot[sid].empty:
-            sparklines[sid] = build_sparkline(snapshot[sid], months=36)
+        if sid in transformed and not transformed[sid].empty:
+            sparklines[sid] = build_sparkline(transformed[sid], months=36)
             hist_context[sid] = build_historical_context(
-                snapshot[sid],
-                float(snapshot[sid].iloc[-1]),
+                transformed[sid],
+                float(transformed[sid].iloc[-1]),
                 history_start=HISTORY_START,
             )
 

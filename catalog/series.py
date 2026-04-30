@@ -5,17 +5,17 @@ catalog/series.py
 
 Това е единственото място, където една серия се описва: източник, ID,
 регион, имена (BG/EN), лещи, peer_group за breadth, tags, трансформация,
-исторически старт, release schedule, narrative hint.
+исторически старт, release schedule, narrative hint, is_rate.
 
 Всички останали модули (analytics, modules, briefing) четат оттук, без да
 дублират metadata.
 
-Phase 1: началник set от потвърдени работещи серии (12). Phase 2 ще добави
-повече когато confirm-нем точните Eurostat filter values за всеки dataset.
+Phase 1.5: 36 confirmed серии (30 baseline + 6 нови от indicator review).
 
 Поддържани източници:
   - "ecb"       — ECB Statistical Data Warehouse (data-api.ecb.europa.eu)
   - "eurostat"  — Eurostat REST API (ec.europa.eu/eurostat)
+  - "derived"   — computed от други серии (BTP-Bund spread = IT_10Y - DE_10Y)
   - "oecd"      — OECD Data API (Phase 2 candidate)
   - "pending"   — placeholder (catalog знае за серията но adapter не ги издърпва)
 
@@ -27,7 +27,7 @@ Phase 1: началник set от потвърдени работещи сер�
 
 Лещи (5):
   - "labor"     — заетост, безработица, заплати
-  - "inflation" — HICP, очаквания
+  - "inflation" — HICP, очаквания, PPI pipeline
   - "growth"    — IP, retail, GDP, sentiment
   - "credit"    — CISS, sovereign spreads, M3, банков lending
   - "ecb"       — ECB rates, balance sheet, TLTRO (нов lens, без US аналог)
@@ -36,10 +36,15 @@ Source ID формати:
   ECB:      "<flowref>/<key>"  напр. "CISS/D.U2.Z0Z.4F.EC.SS_CIN.IDX"
   Eurostat: "<dataset>?<filter_string>"  напр.
             "une_rt_m?geo=EA21&unit=PC_ACT&sex=T&age=TOTAL&s_adj=SA"
+  Derived:  "<expression>"  напр. "IT_10Y - DE_10Y"
 
 ВАЖНО: Eurostat geo кодът варира по dataset. EA21 (текущ Euro Area от 2026)
 работи за `une_rt_m`, `sts_inpr_m`, но не за `prc_hicp_manr` — там ползваме
 `EA` (auto-shifting aggregate). Винаги test-вай преди да добавиш серия.
+
+is_rate field semantics:
+  - True: values (post-transform) са rate / percentage. YoY display ползва pp delta.
+  - False: values са index / balance / level. YoY display ползва relative %.
 """
 from __future__ import annotations
 from typing import Any
@@ -49,7 +54,7 @@ from typing import Any
 # WHITELISTS
 # ============================================================
 
-ALLOWED_SOURCES = {"ecb", "eurostat", "oecd", "pending"}
+ALLOWED_SOURCES = {"ecb", "eurostat", "oecd", "derived", "pending"}
 ALLOWED_REGIONS = {"EA", "EU", "DE", "FR", "IT", "ES", "GLOBAL"}
 ALLOWED_LENSES = {"labor", "inflation", "growth", "credit", "ecb"}
 ALLOWED_TRANSFORMS = {"level", "yoy_pct", "mom_pct", "qoq_pct", "z_score", "first_diff"}
@@ -63,7 +68,7 @@ ALLOWED_SCHEDULES = {"weekly", "monthly", "quarterly", "annually"}
 
 SERIES_CATALOG: dict[str, dict[str, Any]] = {
     # ════════════════════════════════════════════════════════
-    # LABOR (1)
+    # LABOR (4) — unemployment, employment, wages
     # ════════════════════════════════════════════════════════
     "EA_UNRATE": {
         "source": "eurostat",
@@ -75,6 +80,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "unemployment",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "2000-01-01",
         "release_schedule": "monthly",
         "typical_release": "first_week",
@@ -92,6 +98,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "employment",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "2009-01-01",
         "release_schedule": "quarterly",
         "typical_release": "mid_quarter",
@@ -109,6 +116,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "labor_sentiment",
         "tags": [],
         "transform": "level",
+        "is_rate": False,
         "historical_start": "2025-05-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -116,9 +124,28 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "DG ECFIN survey: forward-looking labor signal. "
                           "Limited history (only 12 months in teibs030 dataset).",
     },
+    "EA_COMP_PER_EMPLOYEE": {
+        "source": "eurostat",
+        "id": "namq_10_a10?geo=EA20&unit=CP_MEUR&nace_r2=TOTAL&na_item=D1&s_adj=SCA",
+        "region": "EA",
+        "name_bg": "Компенсация на наетите (D1, EA-20, M€)",
+        "name_en": "Compensation of Employees (D1, EA-20, EUR mln)",
+        "lens": ["labor"],
+        "peer_group": "wages",
+        "tags": [],
+        "transform": "yoy_pct",
+        "is_rate": True,
+        "historical_start": "1995-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "mid_quarter",
+        "revision_prone": True,
+        "narrative_hint": "Quarterly compensation of employees aggregate (EA-20). "
+                          "YoY growth е headline wage signal — lagged 1Q. "
+                          "Активира stagflation cross-lens срещу HICP services.",
+    },
 
     # ════════════════════════════════════════════════════════
-    # INFLATION (3)
+    # INFLATION (6) — HICP family + SPF + PPI pipeline
     # ════════════════════════════════════════════════════════
     "EA_HICP_HEADLINE": {
         "source": "eurostat",
@@ -129,11 +156,12 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "lens": ["inflation"],
         "peer_group": "headline_measures",
         "tags": [],
-        "transform": "level",  # вече е YoY % (RCH_A = "rate of change, annual")
+        "transform": "level",
+        "is_rate": True,
         "historical_start": "1997-01-01",
         "release_schedule": "monthly",
         "typical_release": "mid_month",
-        "revision_prone": True,  # flash → final ревизии
+        "revision_prone": True,
         "narrative_hint": "ЕЦБ-овият главен ценови индикатор. Single mandate target = 2% medium-term.",
     },
     "EA_HICP_CORE": {
@@ -146,6 +174,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "core_measures",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "2001-12-01",
         "release_schedule": "monthly",
         "typical_release": "mid_month",
@@ -163,12 +192,49 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "core_measures",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "2001-12-01",
         "release_schedule": "monthly",
         "typical_release": "mid_month",
         "revision_prone": True,
         "narrative_hint": "Sticky компонент на core inflation. Wage-sensitive — "
                           "leading indicator за core persistence.",
+    },
+    "EA_HICP_ENERGY": {
+        "source": "eurostat",
+        "id": "prc_hicp_manr?geo=EA&unit=RCH_A&coicop=NRG",
+        "region": "EA",
+        "name_bg": "HICP енергия, YoY",
+        "name_en": "HICP Energy, YoY",
+        "lens": ["inflation"],
+        "peer_group": "headline_measures",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "1997-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": True,
+        "narrative_hint": "Volatile component на headline. Oil shock dependent. "
+                          "Headline-core gap explainer; de-singleton-ва headline_measures.",
+    },
+    "EA_HICP_FOOD": {
+        "source": "eurostat",
+        "id": "prc_hicp_manr?geo=EA&unit=RCH_A&coicop=FOOD",
+        "region": "EA",
+        "name_bg": "HICP храни, YoY",
+        "name_en": "HICP Food, YoY",
+        "lens": ["inflation"],
+        "peer_group": "headline_measures",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "1997-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": True,
+        "narrative_hint": "Food prices — supply-side shock proxy (drought, war). "
+                          "По-малко volatile от energy, но social impact силен.",
     },
     "EA_SPF_HICP_LT": {
         "source": "ecb",
@@ -180,6 +246,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "expectations",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1999-01-01",
         "release_schedule": "quarterly",
         "typical_release": "end_quarter",
@@ -188,9 +255,28 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
                           "long-term inflation. Anchored индикатор: ~2% target. "
                           "Дeviation > 0.3pp от target е значителен.",
     },
+    "EA_PPI_INTERMEDIATE": {
+        "source": "eurostat",
+        "id": "sts_inpp_m?geo=EA20&unit=I21&nace_r2=MIG_ING&s_adj=NSA&indic_bt=PRC_PRR",
+        "region": "EA",
+        "name_bg": "PPI междинни стоки (MIG ING, индекс 2021=100)",
+        "name_en": "PPI Intermediate Goods (MIG ING, index 2021=100)",
+        "lens": ["inflation"],
+        "peer_group": "producer_prices",
+        "tags": [],
+        "transform": "yoy_pct",
+        "is_rate": True,
+        "historical_start": "2000-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
+        "revision_prone": True,
+        "narrative_hint": "Producer prices, intermediate goods (proxy за nonenergy PPI). "
+                          "Leading indicator на consumer goods inflation 3-6mo lag. "
+                          "Активира pipeline_inflation cross-lens срещу HICP core.",
+    },
 
     # ════════════════════════════════════════════════════════
-    # GROWTH (1)
+    # GROWTH (10) — hard activity, leading indicators, sentiment
     # ════════════════════════════════════════════════════════
     "EA_IP": {
         "source": "eurostat",
@@ -202,6 +288,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "hard_activity",
         "tags": [],
         "transform": "yoy_pct",
+        "is_rate": True,
         "historical_start": "1991-01-01",
         "release_schedule": "monthly",
         "typical_release": "mid_month",
@@ -219,6 +306,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "hard_activity",
         "tags": [],
         "transform": "yoy_pct",
+        "is_rate": True,
         "historical_start": "2000-01-01",
         "release_schedule": "monthly",
         "typical_release": "first_week",
@@ -235,6 +323,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "hard_activity",
         "tags": [],
         "transform": "yoy_pct",
+        "is_rate": True,
         "historical_start": "1995-01-01",
         "release_schedule": "monthly",
         "typical_release": "mid_month",
@@ -252,6 +341,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "leading_indicators",
         "tags": [],
         "transform": "yoy_pct",
+        "is_rate": True,
         "historical_start": "2005-01-01",
         "release_schedule": "monthly",
         "typical_release": "mid_month",
@@ -269,6 +359,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "hard_activity",
         "tags": [],
         "transform": "qoq_pct",
+        "is_rate": True,
         "historical_start": "1995-01-01",
         "release_schedule": "quarterly",
         "typical_release": "mid_quarter",
@@ -285,6 +376,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sentiment",
         "tags": [],
         "transform": "level",
+        "is_rate": False,
         "historical_start": "2025-05-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -302,6 +394,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sentiment",
         "tags": [],
         "transform": "level",
+        "is_rate": False,
         "historical_start": "2025-05-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -318,6 +411,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sentiment",
         "tags": [],
         "transform": "level",
+        "is_rate": False,
         "historical_start": "2025-05-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -334,6 +428,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sentiment",
         "tags": [],
         "transform": "level",
+        "is_rate": False,
         "historical_start": "2025-05-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -350,6 +445,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sentiment",
         "tags": [],
         "transform": "level",
+        "is_rate": False,
         "historical_start": "1985-01-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -359,7 +455,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
 
     # ════════════════════════════════════════════════════════
-    # CREDIT (5) — CISS + sovereign yields + M3
+    # CREDIT (11) — CISS + sovereign yields/spreads + M3 + bank loans
     # ════════════════════════════════════════════════════════
     "EA_CISS": {
         "source": "ecb",
@@ -371,6 +467,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "financial_stress",
         "tags": [],
         "transform": "level",
+        "is_rate": False,
         "historical_start": "1980-01-03",
         "release_schedule": "weekly",
         "typical_release": "weekly_friday",
@@ -388,7 +485,8 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "lens": ["credit"],
         "peer_group": "monetary_aggregates",
         "tags": [],
-        "transform": "level",  # вече е YoY %
+        "transform": "level",
+        "is_rate": True,
         "historical_start": "1981-01-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -405,7 +503,8 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "lens": ["credit"],
         "peer_group": "bank_lending",
         "tags": [],
-        "transform": "level",  # вече е YoY %
+        "transform": "level",
+        "is_rate": True,
         "historical_start": "2004-01-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -423,6 +522,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "bank_lending",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "2004-01-01",
         "release_schedule": "monthly",
         "typical_release": "end_month",
@@ -439,6 +539,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sovereign_yields",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1970-01-01",
         "release_schedule": "monthly",
         "typical_release": "monthly",
@@ -456,6 +557,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sovereign_yields",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1970-01-01",
         "release_schedule": "monthly",
         "typical_release": "monthly",
@@ -473,6 +575,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sovereign_yields",
         "tags": ["sovereign_stress"],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1993-01-01",
         "release_schedule": "monthly",
         "typical_release": "monthly",
@@ -490,6 +593,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sovereign_yields",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1993-01-01",
         "release_schedule": "monthly",
         "typical_release": "monthly",
@@ -507,12 +611,49 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "sovereign_yields",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1993-01-01",
         "release_schedule": "monthly",
         "typical_release": "monthly",
         "revision_prone": False,
         "narrative_hint": "Germany 10Y, Maastricht-criterion measure. Reference за "
                           "BTP-Bund / OAT-Bund spread изчисления.",
+    },
+    "EA_BTP_BUND_SPREAD": {
+        "source": "derived",
+        "id": "IT_10Y - DE_10Y",
+        "region": "EA",
+        "name_bg": "BTP-Bund spread (IT-DE 10Y, pp)",
+        "name_en": "BTP-Bund Spread (IT-DE 10Y, pp)",
+        "lens": ["credit"],
+        "peer_group": "sovereign_spreads",
+        "tags": ["sovereign_stress"],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "1993-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "monthly",
+        "revision_prone": False,
+        "narrative_hint": "Премиер EA periphery stress proxy. Активира "
+                          "fragmentation_risk cross-lens срещу ECB policy_rates.",
+    },
+    "EA_OAT_BUND_SPREAD": {
+        "source": "derived",
+        "id": "FR_10Y - DE_10Y",
+        "region": "EA",
+        "name_bg": "OAT-Bund spread (FR-DE 10Y, pp)",
+        "name_en": "OAT-Bund Spread (FR-DE 10Y, pp)",
+        "lens": ["credit"],
+        "peer_group": "sovereign_spreads",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "1993-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "monthly",
+        "revision_prone": False,
+        "narrative_hint": "Core-but-not-DE EA stress proxy. Captures France-specific "
+                          "stress (e.g., 2024 budget crisis).",
     },
 
     # ════════════════════════════════════════════════════════
@@ -528,8 +669,9 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "policy_rates",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1999-01-01",
-        "release_schedule": "weekly",  # промяна на decision dates, иначе static
+        "release_schedule": "weekly",
         "typical_release": "ad_hoc",
         "revision_prone": False,
         "narrative_hint": "Главната policy rate след 2014 (когато DFR стана binding). "
@@ -545,6 +687,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "policy_rates",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1999-01-01",
         "release_schedule": "weekly",
         "typical_release": "ad_hoc",
@@ -561,6 +704,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "peer_group": "policy_rates",
         "tags": [],
         "transform": "level",
+        "is_rate": True,
         "historical_start": "1999-01-01",
         "release_schedule": "weekly",
         "typical_release": "ad_hoc",
@@ -576,7 +720,8 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "lens": ["ecb"],
         "peer_group": "balance_sheet",
         "tags": [],
-        "transform": "yoy_pct",  # анализираме trend, не level
+        "transform": "yoy_pct",
+        "is_rate": True,
         "historical_start": "1997-09-01",
         "release_schedule": "monthly",
         "typical_release": "mid_month",
@@ -631,7 +776,7 @@ def all_series_ids() -> list[str]:
 
 
 def series_by_source(source: str) -> list[dict[str, Any]]:
-    """Всички серии от конкретен източник ('ecb', 'eurostat', 'oecd', 'pending')."""
+    """Всички серии от конкретен източник ('ecb', 'eurostat', 'derived', 'oecd', 'pending')."""
     return [
         {**meta, "_key": k}
         for k, meta in SERIES_CATALOG.items()
@@ -647,7 +792,7 @@ def validate_catalog() -> list[str]:
     """Проверява, че всички записи имат задължителните полета с валидни стойности."""
     required_fields = {
         "source", "id", "region", "name_bg", "name_en",
-        "lens", "peer_group", "tags", "transform",
+        "lens", "peer_group", "tags", "transform", "is_rate",
         "historical_start", "release_schedule", "typical_release",
         "revision_prone", "narrative_hint",
     }
@@ -676,6 +821,8 @@ def validate_catalog() -> list[str]:
                 errors.append(f"{key}: невалиден tag '{tag}'")
         if not isinstance(meta["revision_prone"], bool):
             errors.append(f"{key}: revision_prone трябва да е bool")
+        if not isinstance(meta["is_rate"], bool):
+            errors.append(f"{key}: is_rate трябва да е bool")
 
     return errors
 
