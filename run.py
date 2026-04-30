@@ -225,6 +225,53 @@ def cmd_refresh_only(args) -> int:
     return 0
 
 
+def cmd_export_context(args) -> int:
+    """Markdown context export за LLM analysis (Phase 9)."""
+    from sources.ecb_adapter import EcbAdapter
+    from sources.eurostat_adapter import EurostatAdapter
+    from export.briefing_context import generate_briefing_context
+    import modules.labor as labor_mod
+    import modules.inflation as inflation_mod
+    import modules.growth as growth_mod
+    import modules.credit as credit_mod
+    import modules.ecb as ecb_mod
+
+    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+
+    if not args.refresh:
+        _auto_refresh_stale(adapters, verbose=True)
+
+    snapshot = _build_snapshot(adapters, force=args.refresh)
+
+    if not snapshot:
+        print("⚠ Snapshot е празен. Стартирай `python run.py --status --refresh` първо.")
+        return 1
+
+    print(f"\n📦 Snapshot: {len(snapshot)} серии заредени")
+    print("🔬 Изчисляване на модули...")
+
+    modules_results = []
+    for name, mod in [("labor", labor_mod), ("inflation", inflation_mod),
+                      ("growth", growth_mod), ("credit", credit_mod),
+                      ("ecb", ecb_mod)]:
+        try:
+            modules_results.append(mod.run(snapshot))
+        except Exception as e:
+            print(f"   ⚠ {name}: грешка — {e}")
+
+    output_path = f"{OUTPUT_DIR}/briefing_context_{datetime.now().strftime('%Y-%m-%d')}.md"
+    print(f"📝 Генериране на context markdown → {output_path}")
+
+    generate_briefing_context(
+        snapshot=snapshot,
+        modules_results=modules_results,
+        output_path=output_path,
+    )
+
+    print(f"✓ Context готов: {output_path}")
+    return 0
+
+
 def cmd_briefing(args) -> int:
     """Weekly Briefing workflow. Phase 3 (analogs Phase 4, journal Phase 5).
 
@@ -320,6 +367,8 @@ def main() -> int:
                         help="Refresh данни без да генерира briefing (Phase 7)")
     parser.add_argument("--briefing", action="store_true",
                         help="Weekly Briefing (Phase 3) — auto-refresh stale series без --refresh")
+    parser.add_argument("--export-context", action="store_true",
+                        help="Markdown context export за LLM analysis (Phase 9)")
     parser.add_argument("--with-analogs", action="store_true",
                         help="Включи historical analogs секция (Phase 4)")
     parser.add_argument("--with-journal", action="store_true",
@@ -346,6 +395,8 @@ def main() -> int:
         return cmd_modules(args)
     if args.briefing:
         return cmd_briefing(args)
+    if args.export_context:
+        return cmd_export_context(args)
 
     parser.print_help()
     return 0
