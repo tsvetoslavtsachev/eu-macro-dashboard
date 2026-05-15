@@ -1,0 +1,246 @@
+{
+  "region": "EA",
+  "as_of_date": "2026-05-16",
+  "generated_at": "2026-05-15T22:22:01.948779Z",
+  "executive_summary": {
+    "regime_key": "transition",
+    "regime_label_bg": "Преходно / смесено",
+    "css_class": "regime-trans",
+    "narrative": "Сигналите са в преход — няма доминираща конфигурация. Следващите 2-3 релиза ще ориентират посоката. Най-отклонена леща: Inflation — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_EMPLOYMENT_EXP, EA_RETAIL_CONF, EA_COMP_PER_EMPLOYEE (нови 5-годишни екстремуми).",
+    "supporting_signals": [
+      "Най-силна аномалия: EA_EMPLOYMENT_EXP z=-3.14 · NEW-5Y-MIN",
+      "4 нови екстремуми в top-7 (lookback 5г.)"
+    ],
+    "primary_driver": "none"
+  },
+  "lenses": {
+    "labor": {
+      "score": null,
+      "direction": "insufficient_data",
+      "breadth_pct": null,
+      "anomalies_count": 2,
+      "new_extreme_count": 2,
+      "intra_divergences": []
+    },
+    "growth": {
+      "score": 25.0,
+      "direction": "mixed",
+      "breadth_pct": 25.0,
+      "anomalies_count": 4,
+      "new_extreme_count": 2,
+      "intra_divergences": [
+        {
+          "lens": "growth",
+          "group_a": "hard_activity",
+          "group_b": "sentiment",
+          "breadth_a": 0.5,
+          "breadth_b": 0.0,
+          "diff": 0.5,
+          "interpretation": "hard_activity е по-силна (50%) отколкото sentiment (0%) — разминаване +50%."
+        }
+      ]
+    },
+    "inflation": {
+      "score": 16.7,
+      "direction": "contracting",
+      "breadth_pct": 16.7,
+      "anomalies_count": 1,
+      "new_extreme_count": 0,
+      "intra_divergences": []
+    },
+    "credit": {
+      "score": null,
+      "direction": "insufficient_data",
+      "breadth_pct": null,
+      "anomalies_count": 0,
+      "new_extreme_count": 0,
+      "intra_divergences": [
+        {
+          "lens": "credit",
+          "group_a": "bank_lending",
+          "group_b": "sovereign_yields",
+          "breadth_a": 0.5,
+          "breadth_b": 1.0,
+          "diff": -0.5,
+          "interpretation": "sovereign_yields е по-силна (100%) отколкото bank_lending (50%) — разминаване +50%."
+        }
+      ]
+    }
+  },
+  "top_anomalies": [
+    {
+      "series_id": "EA_EMPLOYMENT_EXP",
+      "name_bg": "Очаквания за заетост (3m напред)",
+      "lens": [
+        "labor"
+      ],
+      "peer_group": "labor_sentiment",
+      "z_score": -3.141,
+      "direction": "down",
+      "current_value": 91.7,
+      "last_date": "2026-04-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "min",
+      "narrative_hint": "DG ECFIN survey: forward-looking labor signal. Limited history (only 12 months in teibs030 dataset)."
+    },
+    {
+      "series_id": "EA_RETAIL_CONF",
+      "name_bg": "Доверие в търговията на дребно (DG ECFIN)",
+      "lens": [
+        "growth"
+      ],
+      "peer_group": "sentiment",
+      "z_score": -2.682,
+      "direction": "down",
+      "current_value": -9.9,
+      "last_date": "2026-04-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "min",
+      "narrative_hint": "Sectoral confidence — retail. Limited history в teibs020."
+    },
+    {
+      "series_id": "EA_COMP_PER_EMPLOYEE",
+      "name_bg": "Компенсация на наетите (D1, EA-20, M€)",
+      "lens": [
+        "labor"
+      ],
+      "peer_group": "wages",
+      "z_score": 2.392,
+      "direction": "up",
+      "current_value": 1952296.2,
+      "last_date": "2025-10-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "max",
+      "narrative_hint": "Quarterly compensation of employees aggregate (EA-20). YoY growth е headline wage signal — lagged 1Q. Активира stagflation cross-lens срещу HICP services."
+    },
+    {
+      "series_id": "EA_ESI",
+      "name_bg": "Икономически Sentiment Indicator (DG ECFIN ESI)",
+      "lens": [
+        "growth"
+      ],
+      "peer_group": "sentiment",
+      "z_score": -2.248,
+      "direction": "down",
+      "current_value": 93.0,
+      "last_date": "2026-04-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "min",
+      "narrative_hint": "Composite sentiment indicator (ESI ≈ ISM PMI EA equivalent). Заместител на US PMI. Limited history в teibs010 (12 months)."
+    },
+    {
+      "series_id": "EA_CONSUMER_CONF",
+      "name_bg": "Потребителско доверие (DG ECFIN, full history от 1985)",
+      "lens": [
+        "growth"
+      ],
+      "peer_group": "sentiment",
+      "z_score": -2.105,
+      "direction": "down",
+      "current_value": -20.6,
+      "last_date": "2026-04-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Pre-EMU история (1985+). Negative balance е норма; отклонения от mean показват consumer sentiment shifts."
+    },
+    {
+      "series_id": "EA_RETAIL_VOL",
+      "name_bg": "Търговия на дребно — обем на продажбите (G47, индекс 2021=100)",
+      "lens": [
+        "growth"
+      ],
+      "peer_group": "hard_activity",
+      "z_score": 2.016,
+      "direction": "up",
+      "current_value": 103.6,
+      "last_date": "2026-03-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Consumer spending proxy. По-стабилна от IP — services-driven EA."
+    },
+    {
+      "series_id": "EA_PPI_INTERMEDIATE",
+      "name_bg": "PPI междинни стоки (MIG ING, индекс 2021=100)",
+      "lens": [
+        "inflation"
+      ],
+      "peer_group": "producer_prices",
+      "z_score": 2.014,
+      "direction": "up",
+      "current_value": 118.3,
+      "last_date": "2026-03-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Producer prices, intermediate goods (proxy за nonenergy PPI). Leading indicator на consumer goods inflation 3-6mo lag. Активира pipeline_inflation cross-lens срещу HICP core."
+    }
+  ],
+  "cross_lens_divergences": [
+    {
+      "pair_id": "stagflation_test",
+      "name_bg": "Стагфлационен тест",
+      "question_bg": "Заплатите ли движат услугите нагоре?",
+      "state": "insufficient_data",
+      "interpretation": "Insufficient data в една от двете групи.",
+      "slot_a_label": "Натиск от заплати",
+      "slot_b_label": "Базова/услуги инфлация",
+      "breadth_a": null,
+      "breadth_b": 0.0
+    },
+    {
+      "pair_id": "ecb_transmission",
+      "name_bg": "Трансмисия на ЕЦБ политиката",
+      "question_bg": "ЕЦБ hike-овете стигат ли до банковото кредитиране?",
+      "state": "transition",
+      "interpretation": "Смесена картина — типично около policy turning points.",
+      "slot_a_label": "Policy rates (DFR/MRO)",
+      "slot_b_label": "Банково кредитиране (свиване)",
+      "breadth_a": 0.0,
+      "breadth_b": 0.5
+    },
+    {
+      "pair_id": "fragmentation_risk",
+      "name_bg": "Фрагментационен риск",
+      "question_bg": "ЕЦБ hike-овете разширяват ли периферните spreads?",
+      "state": "insufficient_data",
+      "interpretation": "Insufficient data в една от двете групи.",
+      "slot_a_label": "Policy rates",
+      "slot_b_label": "Sovereign spreads (BTP/OAT-Bund)",
+      "breadth_a": 0.0,
+      "breadth_b": null
+    },
+    {
+      "pair_id": "inflation_anchoring",
+      "name_bg": "Закотвеност на инфлационните очаквания",
+      "question_bg": "Headline отскача — очакванията остават ли закотвени?",
+      "state": "insufficient_data",
+      "interpretation": "Insufficient data в една от двете групи.",
+      "slot_a_label": "Реализирана headline инфлация",
+      "slot_b_label": "SPF дългосрочни очаквания",
+      "breadth_a": 0.333,
+      "breadth_b": null
+    },
+    {
+      "pair_id": "pipeline_inflation",
+      "name_bg": "Pipeline инфлация",
+      "question_bg": "PPI води ли core inflation?",
+      "state": "insufficient_data",
+      "interpretation": "Insufficient data в една от двете групи.",
+      "slot_a_label": "PPI междинни стоки",
+      "slot_b_label": "Core инфлация (HICP)",
+      "breadth_a": null,
+      "breadth_b": 0.0
+    },
+    {
+      "pair_id": "sentiment_vs_hard_data",
+      "name_bg": "Очаквания срещу твърди данни",
+      "question_bg": "Sentiment отразява ли реалната икономика?",
+      "state": "transition",
+      "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
+      "slot_a_label": "Sentiment (ESI, confidence)",
+      "slot_b_label": "Hard activity (IP, retail, GDP)",
+      "breadth_a": 0.0,
+      "breadth_b": 0.5
+    }
+  ],
+  "non_consensus_highlights": []
+}

@@ -3,7 +3,10 @@
 *.key
 
 # ─── Generated artifacts ────────────────────────────────────────────────────
-output/
+output/*
+!output/api/
+output/api/*
+!output/api/*.json
 data/ecb_cache.json
 data/ecb_cache.json.bak
 data/eurostat_cache.json
