@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-05-15",
-  "generated_at": "2026-05-15T22:30:33.670068Z",
+  "as_of_date": "2026-05-16",
+  "generated_at": "2026-05-15T22:34:14.770120Z",
   "executive_summary": {
     "regime_key": "transition",
     "regime_label_bg": "Преходно / смесено",
@@ -36,7 +36,12 @@
           "breadth_a": 0.5,
           "breadth_b": 0.0,
           "diff": 0.5,
-          "interpretation": "hard_activity е по-силна (50%) отколкото sentiment (0%) — разминаване +50%."
+          "interpretation": "hard_activity е по-силна (50%) отколкото sentiment (0%) — разминаване +50%.",
+          "name_bg": "hard_activity vs sentiment",
+          "pair_id": "growth__hard_activity__vs__sentiment",
+          "slot_a_label": "hard_activity",
+          "slot_b_label": "sentiment",
+          "state": "a_up_b_down"
         }
       ]
     },
@@ -62,7 +67,12 @@
           "breadth_a": 0.5,
           "breadth_b": 1.0,
           "diff": -0.5,
-          "interpretation": "sovereign_yields е по-силна (100%) отколкото bank_lending (50%) — разминаване +50%."
+          "interpretation": "sovereign_yields е по-силна (100%) отколкото bank_lending (50%) — разминаване +50%.",
+          "name_bg": "bank_lending vs sovereign_yields",
+          "pair_id": "credit__bank_lending__vs__sovereign_yields",
+          "slot_a_label": "bank_lending",
+          "slot_b_label": "sovereign_yields",
+          "state": "a_down_b_up"
         }
       ]
     }
