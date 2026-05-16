@@ -1,7 +1,7 @@
 {
   "region": "EA",
   "as_of_date": "2026-05-16",
-  "generated_at": "2026-05-16T15:47:04.542423Z",
+  "generated_at": "2026-05-16T16:03:46.744213Z",
   "executive_summary": {
     "regime_key": "transition",
     "regime_label_bg": "Преходно / смесено",
@@ -23,27 +23,12 @@
       "intra_divergences": []
     },
     "growth": {
-      "score": 25.0,
+      "score": 36.1,
       "direction": "mixed",
-      "breadth_pct": 25.0,
+      "breadth_pct": 36.1,
       "anomalies_count": 4,
       "new_extreme_count": 2,
-      "intra_divergences": [
-        {
-          "lens": "growth",
-          "group_a": "hard_activity",
-          "group_b": "sentiment",
-          "breadth_a": 0.5,
-          "breadth_b": 0.0,
-          "diff": 0.5,
-          "interpretation": "hard_activity е по-силна (50%) отколкото sentiment (0%) — разминаване +50%.",
-          "name_bg": "hard_activity vs sentiment",
-          "pair_id": "growth__hard_activity__vs__sentiment",
-          "slot_a_label": "hard_activity",
-          "slot_b_label": "sentiment",
-          "state": "a_up_b_down"
-        }
-      ]
+      "intra_divergences": []
     },
     "inflation": {
       "score": 16.7,
@@ -248,7 +233,7 @@
       "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
-      "breadth_a": 0.0,
+      "breadth_a": 0.222,
       "breadth_b": 0.5
     }
   ],
