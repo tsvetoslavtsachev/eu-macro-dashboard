@@ -57,15 +57,17 @@ CHART_SERIES = {
         "EA_HICP_ENERGY", "EA_HICP_FOOD", "EA_SPF_HICP_LT", "EA_PPI_INTERMEDIATE",
     ],
     "growth": [
-        "EA_IP", "EA_RETAIL_VOL", "EA_GDP_QOQ", "EA_ESI",
+        "EA_IP", "EA_RETAIL_VOL", "EA_BUILDING_PRODUCTION", "EA_PERMIT_DW",
+        "EA_GDP_QOQ", "EA_ESI",
         "EA_CONSUMER_CONF", "EA_INDUSTRY_CONF",
+        "EA_CONSTRUCTION_CONF", "EA_RETAIL_CONF",
     ],
     "credit": [
         "EA_CISS", "EA_M3_YOY", "EA_BANK_LOANS_NFC", "EA_BANK_LOANS_HH",
         "EA_BTP_BUND_SPREAD", "EA_OAT_BUND_SPREAD",
     ],
     "ecb": [
-        "ECB_DFR", "ECB_MRO", "ECB_BALANCE_SHEET",
+        "ECB_DFR", "ECB_MRO", "ECB_MLF", "ECB_BALANCE_SHEET",
         "EA_BUND_10Y", "EA_BUND_2Y",
     ],
 }
