@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-05-16",
-  "generated_at": "2026-05-16T16:03:46.744213Z",
+  "as_of_date": "2026-05-23",
+  "generated_at": "2026-05-23T09:20:33.277050Z",
   "executive_summary": {
     "regime_key": "transition",
     "regime_label_bg": "Преходно / смесено",
@@ -9,7 +9,8 @@
     "narrative": "Сигналите са в преход — няма доминираща конфигурация. Следващите 2-3 релиза ще ориентират посоката. Най-отклонена леща: Inflation — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_EMPLOYMENT_EXP, EA_RETAIL_CONF, EA_COMP_PER_EMPLOYEE (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: EA_EMPLOYMENT_EXP z=-3.14 · NEW-5Y-MIN",
-      "4 нови екстремуми в top-7 (lookback 5г.)"
+      "4 нови екстремуми в top-7 (lookback 5г.)",
+      "Активни двойки: Sentiment × Hard=a_down_b_up"
     ],
     "primary_driver": "none"
   },
@@ -23,12 +24,27 @@
       "intra_divergences": []
     },
     "growth": {
-      "score": 36.1,
+      "score": 48.6,
       "direction": "mixed",
-      "breadth_pct": 36.1,
+      "breadth_pct": 48.6,
       "anomalies_count": 4,
       "new_extreme_count": 2,
-      "intra_divergences": []
+      "intra_divergences": [
+        {
+          "lens": "growth",
+          "group_a": "hard_activity",
+          "group_b": "sentiment",
+          "breadth_a": 0.75,
+          "breadth_b": 0.222,
+          "diff": 0.528,
+          "interpretation": "hard_activity е по-силна (75%) отколкото sentiment (22%) — разминаване +53%.",
+          "name_bg": "hard_activity vs sentiment",
+          "pair_id": "growth__hard_activity__vs__sentiment",
+          "slot_a_label": "hard_activity",
+          "slot_b_label": "sentiment",
+          "state": "a_up_b_down"
+        }
+      ]
     },
     "inflation": {
       "score": 16.7,
@@ -229,12 +245,12 @@
       "pair_id": "sentiment_vs_hard_data",
       "name_bg": "Очаквания срещу твърди данни",
       "question_bg": "Sentiment отразява ли реалната икономика?",
-      "state": "transition",
-      "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
+      "state": "a_down_b_up",
+      "interpretation": "Narrative pessimism, но fundamentals OK. Sentiment trailing real activity — temporary.",
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
       "breadth_a": 0.222,
-      "breadth_b": 0.5
+      "breadth_b": 0.75
     }
   ],
   "non_consensus_highlights": []
