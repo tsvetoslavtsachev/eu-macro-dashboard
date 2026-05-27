@@ -298,6 +298,7 @@ def cmd_briefing(args) -> int:
     from sources.ecb_adapter import EcbAdapter
     from sources.eurostat_adapter import EurostatAdapter
     from export.weekly_briefing import generate_weekly_briefing
+    from export.quick_briefing import generate_quick_briefing
 
     adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
 
@@ -336,17 +337,28 @@ def cmd_briefing(args) -> int:
         except Exception as e:
             print(f"   ❌ Грешка: {e}")
 
-    output_path = f"{OUTPUT_DIR}/briefing_{datetime.now().strftime('%Y-%m-%d')}.html"
-    print(f"📝 Генериране на HTML → {output_path}")
+    today_str = datetime.now().strftime('%Y-%m-%d')
+    output_path = f"{OUTPUT_DIR}/briefing_{today_str}.html"
+    quick_filename = f"briefing_quick_{today_str}.html"
+    quick_path = f"{OUTPUT_DIR}/{quick_filename}"
+    deep_filename = f"briefing_{today_str}.html"
 
+    print(f"📝 Генериране на HTML (deep) → {output_path}")
     generate_weekly_briefing(
         snapshot=snapshot,
         output_path=output_path,
         analog_bundle=analog_bundle,
         journal_entries=journal_entries,
     )
-
     print(f"✓ Briefing готов: {output_path}")
+
+    print(f"⚡ Генериране на Quick scoreboard → {quick_path}")
+    generate_quick_briefing(
+        snapshot=snapshot,
+        output_path=quick_path,
+        deep_link=deep_filename,
+    )
+    print(f"✓ Quick готов: {quick_path}")
     if not args.no_browser:
         try:
             webbrowser.open(f"file://{Path(output_path).resolve()}")

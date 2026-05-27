@@ -62,8 +62,12 @@ jobs:
       - name: Prepare Pages site
         run: |
           mkdir -p _site
-          LATEST=$(ls -1t output/briefing_*.html | head -n1)
-          cp "$LATEST" _site/index.html
+          LATEST_QUICK=$(ls -1t output/briefing_quick_*.html 2>/dev/null | head -n1)
+          if [ -n "$LATEST_QUICK" ]; then
+            cp "$LATEST_QUICK" _site/index.html
+          else
+            cp $(ls -1t output/briefing_*.html | grep -v briefing_quick | head -n1) _site/index.html
+          fi
           cp output/briefing_*.html _site/ 2>/dev/null || true
           cp output/briefing_context_*.md _site/ 2>/dev/null || true
           ls -la _site/
