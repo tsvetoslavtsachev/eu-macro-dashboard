@@ -1,16 +1,15 @@
 {
   "region": "EA",
-  "as_of_date": "2026-05-23",
-  "generated_at": "2026-05-23T09:20:33.277050Z",
+  "as_of_date": "2026-05-30",
+  "generated_at": "2026-05-30T09:30:06.374894Z",
   "executive_summary": {
     "regime_key": "transition",
     "regime_label_bg": "Преходно / смесено",
     "css_class": "regime-trans",
-    "narrative": "Сигналите са в преход — няма доминираща конфигурация. Следващите 2-3 релиза ще ориентират посоката. Най-отклонена леща: Inflation — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_EMPLOYMENT_EXP, EA_RETAIL_CONF, EA_COMP_PER_EMPLOYEE (нови 5-годишни екстремуми).",
+    "narrative": "Сигналите са в преход — няма доминираща конфигурация. Следващите 2-3 релиза ще ориентират посоката. Най-отклонена леща: Inflation — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_COMP_PER_EMPLOYEE, EA_RETAIL_CONF (нови 5-годишни екстремуми).",
     "supporting_signals": [
-      "Най-силна аномалия: EA_EMPLOYMENT_EXP z=-3.14 · NEW-5Y-MIN",
-      "4 нови екстремуми в top-7 (lookback 5г.)",
-      "Активни двойки: Sentiment × Hard=a_down_b_up"
+      "Най-силна аномалия: EA_COMP_PER_EMPLOYEE z=+2.39 · NEW-5Y-MAX",
+      "2 нови екстремуми в top-4 (lookback 5г.)"
     ],
     "primary_driver": "none"
   },
@@ -19,32 +18,17 @@
       "score": null,
       "direction": "insufficient_data",
       "breadth_pct": null,
-      "anomalies_count": 2,
-      "new_extreme_count": 2,
+      "anomalies_count": 1,
+      "new_extreme_count": 1,
       "intra_divergences": []
     },
     "growth": {
-      "score": 48.6,
+      "score": 59.7,
       "direction": "mixed",
-      "breadth_pct": 48.6,
-      "anomalies_count": 4,
-      "new_extreme_count": 2,
-      "intra_divergences": [
-        {
-          "lens": "growth",
-          "group_a": "hard_activity",
-          "group_b": "sentiment",
-          "breadth_a": 0.75,
-          "breadth_b": 0.222,
-          "diff": 0.528,
-          "interpretation": "hard_activity е по-силна (75%) отколкото sentiment (22%) — разминаване +53%.",
-          "name_bg": "hard_activity vs sentiment",
-          "pair_id": "growth__hard_activity__vs__sentiment",
-          "slot_a_label": "hard_activity",
-          "slot_b_label": "sentiment",
-          "state": "a_up_b_down"
-        }
-      ]
+      "breadth_pct": 59.699999999999996,
+      "anomalies_count": 2,
+      "new_extreme_count": 1,
+      "intra_divergences": []
     },
     "inflation": {
       "score": 16.7,
@@ -80,36 +64,6 @@
   },
   "top_anomalies": [
     {
-      "series_id": "EA_EMPLOYMENT_EXP",
-      "name_bg": "Очаквания за заетост (3m напред)",
-      "lens": [
-        "labor"
-      ],
-      "peer_group": "labor_sentiment",
-      "z_score": -3.141,
-      "direction": "down",
-      "current_value": 91.7,
-      "last_date": "2026-04-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "min",
-      "narrative_hint": "DG ECFIN survey: forward-looking labor signal. Limited history (only 12 months in teibs030 dataset)."
-    },
-    {
-      "series_id": "EA_RETAIL_CONF",
-      "name_bg": "Доверие в търговията на дребно (DG ECFIN)",
-      "lens": [
-        "growth"
-      ],
-      "peer_group": "sentiment",
-      "z_score": -2.682,
-      "direction": "down",
-      "current_value": -9.9,
-      "last_date": "2026-04-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "min",
-      "narrative_hint": "Sectoral confidence — retail. Limited history в teibs020."
-    },
-    {
       "series_id": "EA_COMP_PER_EMPLOYEE",
       "name_bg": "Компенсация на наетите (D1, EA-20, M€)",
       "lens": [
@@ -125,34 +79,19 @@
       "narrative_hint": "Quarterly compensation of employees aggregate (EA-20). YoY growth е headline wage signal — lagged 1Q. Активира stagflation cross-lens срещу HICP services."
     },
     {
-      "series_id": "EA_ESI",
-      "name_bg": "Икономически Sentiment Indicator (DG ECFIN ESI)",
+      "series_id": "EA_RETAIL_CONF",
+      "name_bg": "Доверие в търговията на дребно (DG ECFIN)",
       "lens": [
         "growth"
       ],
       "peer_group": "sentiment",
-      "z_score": -2.248,
+      "z_score": -2.292,
       "direction": "down",
-      "current_value": 93.0,
-      "last_date": "2026-04-01",
+      "current_value": -10.9,
+      "last_date": "2026-05-01",
       "is_new_extreme": true,
       "new_extreme_direction": "min",
-      "narrative_hint": "Composite sentiment indicator (ESI ≈ ISM PMI EA equivalent). Заместител на US PMI. Limited history в teibs010 (12 months)."
-    },
-    {
-      "series_id": "EA_CONSUMER_CONF",
-      "name_bg": "Потребителско доверие (DG ECFIN, full history от 1985)",
-      "lens": [
-        "growth"
-      ],
-      "peer_group": "sentiment",
-      "z_score": -2.105,
-      "direction": "down",
-      "current_value": -20.6,
-      "last_date": "2026-04-01",
-      "is_new_extreme": false,
-      "new_extreme_direction": null,
-      "narrative_hint": "Pre-EMU история (1985+). Negative balance е норма; отклонения от mean показват consumer sentiment shifts."
+      "narrative_hint": "Sectoral confidence — retail. Limited history в teibs020."
     },
     {
       "series_id": "EA_RETAIL_VOL",
@@ -245,11 +184,11 @@
       "pair_id": "sentiment_vs_hard_data",
       "name_bg": "Очаквания срещу твърди данни",
       "question_bg": "Sentiment отразява ли реалната икономика?",
-      "state": "a_down_b_up",
-      "interpretation": "Narrative pessimism, но fundamentals OK. Sentiment trailing real activity — temporary.",
+      "state": "transition",
+      "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
-      "breadth_a": 0.222,
+      "breadth_a": 0.444,
       "breadth_b": 0.75
     }
   ],
