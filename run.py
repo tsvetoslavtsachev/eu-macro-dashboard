@@ -97,6 +97,19 @@ def _build_snapshot(adapters: dict, force: bool = False) -> dict:
         else:
             results = adapter.get_snapshot([s["key"] for s in specs])
         snapshot.update(results)
+
+    # Bloomberg bridge — parquet (local dev) / committed JSON (CI), read-only
+    try:
+        from catalog.series import SERIES_CATALOG
+        from sources.bloomberg_bridge_adapter import BloombergBridgeAdapter
+        bridge_snap = BloombergBridgeAdapter().get_snapshot(SERIES_CATALOG)
+        if bridge_snap:
+            snapshot.update(bridge_snap)
+            print(f"📦 Bloomberg bridge: добавени {len(bridge_snap)} серии")
+    except Exception as e:
+        import logging
+        logging.warning(f"Bloomberg bridge snapshot failed: {e}")
+
     return snapshot
 
 
