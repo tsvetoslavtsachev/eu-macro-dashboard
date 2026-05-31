@@ -136,11 +136,14 @@ def test_derive_regime_returns_label_css_narrative(cross_report):
 # ── Section renderers ──────────────────────────────────────────
 
 def test_render_header_includes_kpis():
-    html = _render_header(date(2026, 4, 30), 34, 6, 2)
+    html = _render_header(date(2026, 4, 30), 34, 6, 2, composite=58.0)
     assert "34" in html
     assert "kpi" in html
     assert "Седмичен макро брифинг" in html
-    # No composite score in header (US-style)
+    # Headline composite circle (China-style паритет с US) — ползва score-circle/
+    # score-num класовете, не legacy "score-value".
+    assert "score-circle" in html
+    assert "58.0" in html
     assert "score-value" not in html
 
 
@@ -198,8 +201,12 @@ def test_generate_briefing_creates_html_file(tmp_path, sample_snapshot):
     assert 'lang="bg"' in html
 
 
-def test_generate_briefing_no_composite_in_output(tmp_path, sample_snapshot):
-    """User feedback: composite scores са излишни в HTML-а."""
+def test_generate_briefing_headline_circle_no_module_blocks(tmp_path, sample_snapshot):
+    """Решение 2026-06-01 (B1 паритет): headline composite circle е разрешен
+    (същият China-style визуален език като US/China). Но legacy per-module
+    composite блокове (старият Manus стил) остават забранени — оригиналният
+    feedback беше срещу verbose per-lens score блокове, не срещу headline circle.
+    """
     output = tmp_path / "ctx.html"
     generate_weekly_briefing(
         snapshot=sample_snapshot,
@@ -207,9 +214,10 @@ def test_generate_briefing_no_composite_in_output(tmp_path, sample_snapshot):
         today=date(2026, 4, 28),
     )
     html = output.read_text(encoding="utf-8")
-    assert "Композитен макро score" not in html
+    # Headline composite circle присъства (паритет с US/China)
+    assert "score-circle" in html
+    # Но НЯМА legacy per-module composite блокове / verbose "Композитен" heading
     assert "Композитен Macro Score" not in html
-    # NO module-block sections (per-lens score blocks)
     assert 'class="module-block"' not in html
 
 
