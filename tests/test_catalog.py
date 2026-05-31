@@ -103,12 +103,15 @@ def test_headline_measures_no_longer_singleton():
     assert len(members) >= 3, f"headline_measures should have 3+, got {len(members)}"
 
 
-def test_sovereign_spreads_has_two_members():
-    """sovereign_spreads трябва да има BTP-Bund + OAT-Bund."""
+def test_sovereign_spreads_has_peripheral_breadth():
+    """Phase EU.1.5 (2026-05-31): разширено до 5 spreads — BTP, OAT, Bono, PT, GR."""
     members = series_by_peer_group("sovereign_spreads")
-    assert len(members) == 2
     sids = {m["_key"] for m in members}
-    assert sids == {"EA_BTP_BUND_SPREAD", "EA_OAT_BUND_SPREAD"}
+    expected = {
+        "EA_BTP_BUND_SPREAD", "EA_OAT_BUND_SPREAD",
+        "EA_BONO_BUND_SPREAD", "EA_PT_BUND_SPREAD", "EA_GR_BUND_SPREAD",
+    }
+    assert expected.issubset(sids), f"Missing: {expected - sids}"
 
 
 def test_derived_source_allowed():

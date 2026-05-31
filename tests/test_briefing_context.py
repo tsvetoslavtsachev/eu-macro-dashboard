@@ -152,8 +152,8 @@ def test_render_themes_uses_peer_group_tables(lens_reports):
     # Trябва да има peer_group rows за всяка lens
     assert "Peer group" in text
     assert "breadth ↑" in text
-    # И петте теми
-    for label in ["Пазар на труда", "Инфлация", "Растеж", "Финансови условия", "ЕЦБ"]:
+    # И петте теми (harmonized labels — Phase 1; EU labels reflect real lens content)
+    for label in ["Пазар на труда", "Инфлация и цени", "Растеж и активност", "Финансови условия", "ЕЦБ"]:
         assert label in text
 
 

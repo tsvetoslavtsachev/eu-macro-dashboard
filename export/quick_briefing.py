@@ -21,14 +21,12 @@ from typing import Optional
 import pandas as pd
 
 from analysis.executive import (
+    LENS_ORDER,
     LENS_LABEL_BG,
     REGIME_CSS_CLASS,
     REGIME_LABELS_BG,
     compute_executive_summary,
 )
-# NB: import LENS_ORDER от weekly_briefing (правилния EU списък — credit, ecb)
-# вместо executive.LENS_ORDER (остарял copy-paste с "liquidity")
-from export.weekly_briefing import LENS_ORDER
 from analysis.breadth import compute_lens_breadth
 from analysis.divergence import compute_cross_lens_divergence
 from analysis.anomaly import compute_anomalies
