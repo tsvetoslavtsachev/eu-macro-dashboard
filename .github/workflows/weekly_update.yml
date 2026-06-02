@@ -54,7 +54,9 @@ jobs:
         run: python run.py --refresh-only
 
       - name: Generate HTML briefing
-        run: python run.py --briefing --no-browser
+        # --with-analogs: Historical Analog Engine секция в deep-а (строи се от наличния
+        # snapshot, 1999+ EMU ера; degrade-ва gracefully → секцията се пропуска при недостиг).
+        run: python run.py --briefing --with-analogs --no-browser
 
       - name: Generate Markdown context
         run: python run.py --export-context --no-browser
