@@ -68,7 +68,8 @@ ALLOWED_SCHEDULES = {"daily", "weekly", "monthly", "quarterly", "annually"}
 
 SERIES_CATALOG: dict[str, dict[str, Any]] = {
     # ════════════════════════════════════════════════════════
-    # LABOR (4) — unemployment, employment, wages
+    # LABOR (8) — unemployment, employment, wages, labor_sentiment
+    # Всяка peer-група има ≥2 серии (de-singleton, за да скорира лещата).
     # ════════════════════════════════════════════════════════
     "EA_UNRATE": {
         "source": "eurostat",
@@ -142,6 +143,88 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "Quarterly compensation of employees aggregate (EA-20). "
                           "YoY growth е headline wage signal — lagged 1Q. "
                           "Активира stagflation cross-lens срещу HICP services.",
+    },
+
+    # ─── Втори членове на labor peer-групите (Phase EU.labor, 2026-06-03) ───
+    # Добавени за да скорира labor lens-ът: всяка singleton група получава 2-ри
+    # серия със същата полярност (sign-consistent breadth). Всички verified
+    # през EurostatAdapter — теглят свежи данни. Виж HANDOFF-eu-labor-dbnomics.md.
+    "EA_UNEMP_YOUTH": {
+        "source": "eurostat",
+        "id": "une_rt_m?geo=EA21&unit=PC_ACT&sex=T&age=Y_LT25&s_adj=SA",
+        "region": "EA",
+        "name_bg": "Младежка безработица (под 25г, EA-21)",
+        "name_en": "Youth Unemployment Rate (under 25, EA-21)",
+        "lens": ["labor"],
+        "peer_group": "unemployment",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "2000-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
+        "revision_prone": False,
+        "narrative_hint": "Под-25 безработица — по-cyclical и leading спрямо headline "
+                          "(EA_UNRATE). Същата полярност (higher=worse). "
+                          "De-singleton-ва unemployment peer-групата.",
+    },
+    "EA_EMPLOYMENT_PERSONS": {
+        "source": "eurostat",
+        "id": "namq_10_a10_e?geo=EA20&na_item=EMP_DC&unit=THS_PER&nace_r2=TOTAL&s_adj=SCA",
+        "region": "EA",
+        "name_bg": "Заетост — брой наети (нац. сметки, EA-20, хил. лица)",
+        "name_en": "Employment — Persons (national accounts, EA-20, thousands)",
+        "lens": ["labor"],
+        "peer_group": "employment",
+        "tags": [],
+        "transform": "yoy_pct",
+        "is_rate": True,
+        "historical_start": "1995-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "mid_quarter",
+        "revision_prone": True,
+        "narrative_hint": "Домашна концепция за заетост (брой наети) от тримесечните "
+                          "нац. сметки. Допълва employment RATE (EA_LFS_EMP) с обемен "
+                          "сигнал — същата полярност. De-singleton-ва employment.",
+    },
+    "EA_WAGES_SALARIES": {
+        "source": "eurostat",
+        "id": "namq_10_a10?geo=EA20&unit=CP_MEUR&nace_r2=TOTAL&na_item=D11&s_adj=SCA",
+        "region": "EA",
+        "name_bg": "Работни заплати (D11, EA-20, M€)",
+        "name_en": "Wages and Salaries (D11, EA-20, EUR mln)",
+        "lens": ["labor"],
+        "peer_group": "wages",
+        "tags": [],
+        "transform": "yoy_pct",
+        "is_rate": True,
+        "historical_start": "1995-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "mid_quarter",
+        "revision_prone": True,
+        "narrative_hint": "Работни заплати (D11 = компенсация без работодателските "
+                          "социални вноски D12). Допълва общата компенсация D1 "
+                          "(EA_COMP_PER_EMPLOYEE) — същата полярност. De-singleton-ва wages.",
+    },
+    "EA_EMP_EXP_SERVICES": {
+        "source": "eurostat",
+        "id": "ei_bsse_m_r2?geo=EA21&indic=BS-SEEM&s_adj=SA&unit=BAL",
+        "region": "EA",
+        "name_bg": "Очаквания за заетост — услуги (3m напред)",
+        "name_en": "Employment Expectations — Services (next 3 months)",
+        "lens": ["labor"],
+        "peer_group": "labor_sentiment",
+        "tags": [],
+        "transform": "level",
+        "is_rate": False,
+        "historical_start": "1996-04-01",
+        "release_schedule": "monthly",
+        "typical_release": "end_month",
+        "revision_prone": False,
+        "narrative_hint": "DG ECFIN survey: forward-looking labor сигнал от услугите "
+                          "(~70% от GDP). Дълга история (от 1996) — за разлика от "
+                          "teibs030 (EA_EMPLOYMENT_EXP, 12m). Същата полярност "
+                          "(higher=better). De-singleton-ва labor_sentiment.",
     },
 
     # ════════════════════════════════════════════════════════

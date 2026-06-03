@@ -1,26 +1,70 @@
 {
   "region": "EA",
-  "as_of_date": "2026-05-30",
-  "generated_at": "2026-05-30T09:30:06.374894Z",
+  "as_of_date": "2026-06-03",
+  "generated_at": "2026-06-03T09:13:57.832172Z",
   "executive_summary": {
-    "regime_key": "transition",
-    "regime_label_bg": "Преходно / смесено",
-    "css_class": "regime-trans",
-    "narrative": "Сигналите са в преход — няма доминираща конфигурация. Следващите 2-3 релиза ще ориентират посоката. Най-отклонена леща: Inflation — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_COMP_PER_EMPLOYEE, EA_RETAIL_CONF (нови 5-годишни екстремуми).",
+    "regime_key": "soft_landing",
+    "regime_label_bg": "Soft landing",
+    "css_class": "regime-soft",
+    "narrative": "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията се охлажда. Fed credibility за момента издържа. Най-отклонена леща: Инфлация и цени — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_COMP_PER_EMPLOYEE, EA_WAGES_SALARIES, EA_RETAIL_CONF (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: EA_COMP_PER_EMPLOYEE z=+2.39 · NEW-5Y-MAX",
-      "2 нови екстремуми в top-4 (lookback 5г.)"
+      "3 нови екстремуми в top-5 (lookback 5г.)",
+      "Активни двойки: Stagflation test=a_up_b_down"
     ],
-    "primary_driver": "none"
+    "primary_driver": "stagflation_test"
   },
   "lenses": {
     "labor": {
-      "score": null,
-      "direction": "insufficient_data",
-      "breadth_pct": null,
-      "anomalies_count": 1,
-      "new_extreme_count": 1,
-      "intra_divergences": []
+      "score": 75.0,
+      "direction": "expanding",
+      "breadth_pct": 75.0,
+      "anomalies_count": 2,
+      "new_extreme_count": 2,
+      "intra_divergences": [
+        {
+          "lens": "labor",
+          "group_a": "employment",
+          "group_b": "unemployment",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "employment е по-силна (100%) отколкото unemployment (0%) — разминаване +100%.",
+          "name_bg": "employment vs unemployment",
+          "pair_id": "labor__employment__vs__unemployment",
+          "slot_a_label": "employment",
+          "slot_b_label": "unemployment",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "labor",
+          "group_a": "labor_sentiment",
+          "group_b": "unemployment",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "labor_sentiment е по-силна (100%) отколкото unemployment (0%) — разминаване +100%.",
+          "name_bg": "labor_sentiment vs unemployment",
+          "pair_id": "labor__labor_sentiment__vs__unemployment",
+          "slot_a_label": "labor_sentiment",
+          "slot_b_label": "unemployment",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "labor",
+          "group_a": "unemployment",
+          "group_b": "wages",
+          "breadth_a": 0.0,
+          "breadth_b": 1.0,
+          "diff": -1.0,
+          "interpretation": "wages е по-силна (100%) отколкото unemployment (0%) — разминаване +100%.",
+          "name_bg": "unemployment vs wages",
+          "pair_id": "labor__unemployment__vs__wages",
+          "slot_a_label": "unemployment",
+          "slot_b_label": "wages",
+          "state": "a_down_b_up"
+        }
+      ]
     },
     "growth": {
       "score": 59.7,
@@ -39,9 +83,9 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": null,
-      "direction": "insufficient_data",
-      "breadth_pct": null,
+      "score": 75.0,
+      "direction": "mixed",
+      "breadth_pct": 75.0,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
@@ -77,6 +121,21 @@
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Quarterly compensation of employees aggregate (EA-20). YoY growth е headline wage signal — lagged 1Q. Активира stagflation cross-lens срещу HICP services."
+    },
+    {
+      "series_id": "EA_WAGES_SALARIES",
+      "name_bg": "Работни заплати (D11, EA-20, M€)",
+      "lens": [
+        "labor"
+      ],
+      "peer_group": "wages",
+      "z_score": 2.378,
+      "direction": "up",
+      "current_value": 1526560.4,
+      "last_date": "2025-10-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "max",
+      "narrative_hint": "Работни заплати (D11 = компенсация без работодателските социални вноски D12). Допълва общата компенсация D1 (EA_COMP_PER_EMPLOYEE) — същата полярност. De-singleton-ва wages."
     },
     {
       "series_id": "EA_RETAIL_CONF",
@@ -129,11 +188,11 @@
       "pair_id": "stagflation_test",
       "name_bg": "Стагфлационен тест",
       "question_bg": "Заплатите ли движат услугите нагоре?",
-      "state": "insufficient_data",
-      "interpretation": "Insufficient data в една от двете групи.",
+      "state": "a_up_b_down",
+      "interpretation": "Wage-led моментум без transfer към услугите още. Early warning — гледай дали ще пробие.",
       "slot_a_label": "Натиск от заплати",
       "slot_b_label": "Базова/услуги инфлация",
-      "breadth_a": null,
+      "breadth_a": 1.0,
       "breadth_b": 0.0
     },
     {
@@ -144,7 +203,7 @@
       "interpretation": "Смесена картина — типично около policy turning points.",
       "slot_a_label": "Policy rates (DFR/MRO)",
       "slot_b_label": "Банково кредитиране (свиване)",
-      "breadth_a": 0.0,
+      "breadth_a": 0.25,
       "breadth_b": 0.5
     },
     {
@@ -155,7 +214,7 @@
       "interpretation": "Insufficient data в една от двете групи.",
       "slot_a_label": "Policy rates",
       "slot_b_label": "Sovereign spreads (BTP/OAT-Bund)",
-      "breadth_a": 0.0,
+      "breadth_a": 0.25,
       "breadth_b": null
     },
     {
