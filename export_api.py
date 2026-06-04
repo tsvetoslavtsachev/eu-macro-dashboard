@@ -32,6 +32,7 @@ BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
 
 from catalog.series import SERIES_CATALOG, series_by_source
+from catalog.polarity import polarity_for
 from sources.ecb_adapter import EcbAdapter
 from sources.eurostat_adapter import EurostatAdapter
 from core.scorer import score_series
@@ -46,7 +47,6 @@ from analysis.executive import compute_executive_summary
 # ── константи ───────────────────────────────────────────────────────────────
 OUTPUT_DIR = BASE_DIR / "output" / "api"
 LENSES = ["labor", "growth", "inflation", "credit"]
-HISTORY_START = "2000-01-01"
 
 # Кои серии да включим в series_data.json (ключови за графиките)
 CHART_SERIES = {
@@ -337,7 +337,15 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
         dates = [str(d.date()) for d in display_filtered.index]
         values = [_clean(v) for v in display_filtered.values]
 
-        score_data = score_series(display_series, history_start=HISTORY_START, name=series_id)
+        # Единният health примитив — робастен z спрямо 10-г. плъзгаща норма върху
+        # каталожно-трансформираната серия + полярност. score=50 е близката норма;
+        # percentile е trailing-10г ранг (вече НЕ клони към 100 за растящите серии).
+        score_data = score_series(
+            raw_series, name=series_id,
+            is_rate=bool(meta.get("is_rate", False)),
+            transform=transform,
+            polarity=polarity_for(series_id, primary_lens),
+        )
 
         series_out[series_id] = {
             "meta": {
@@ -358,6 +366,7 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
                 "yoy_change": _clean(yoy_val),
                 "percentile": _clean(score_data.get("percentile")),
                 "z_score": _clean(score_data.get("z_score")),
+                "health_z": _clean(score_data.get("health_z")),
                 "score": _clean(score_data.get("score")),
                 "regime": score_data.get("regime_label"),
             },
