@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-06-03",
-  "generated_at": "2026-06-03T09:13:57.832172Z",
+  "as_of_date": "2026-06-04",
+  "generated_at": "2026-06-04T17:49:42.603588Z",
   "executive_summary": {
     "regime_key": "soft_landing",
     "regime_label_bg": "Soft landing",
@@ -16,9 +16,10 @@
   },
   "lenses": {
     "labor": {
-      "score": 75.0,
-      "direction": "expanding",
-      "breadth_pct": 75.0,
+      "score": 38.1,
+      "health_z": -0.487,
+      "direction": "mixed",
+      "breadth_pct": 57.1,
       "anomalies_count": 2,
       "new_extreme_count": 2,
       "intra_divergences": [
@@ -67,25 +68,28 @@
       ]
     },
     "growth": {
-      "score": 59.7,
+      "score": 50.8,
+      "health_z": 0.033,
       "direction": "mixed",
-      "breadth_pct": 59.699999999999996,
+      "breadth_pct": 20.0,
       "anomalies_count": 2,
       "new_extreme_count": 1,
       "intra_divergences": []
     },
     "inflation": {
-      "score": 16.7,
-      "direction": "contracting",
-      "breadth_pct": 16.7,
+      "score": 48.2,
+      "health_z": -0.072,
+      "direction": "mixed",
+      "breadth_pct": 71.4,
       "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": []
     },
     "credit": {
-      "score": 75.0,
+      "score": 40.0,
+      "health_z": -0.405,
       "direction": "mixed",
-      "breadth_pct": 75.0,
+      "breadth_pct": 25.0,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [

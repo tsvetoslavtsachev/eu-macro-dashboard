@@ -129,6 +129,60 @@ def _infer_yoy_periods(series: pd.Series) -> int:
 
 
 # ============================================================
+# TRANSFORM + ROBUST STANDARDIZATION (lens health scoring)
+# ============================================================
+# Виж ../macro-satellite/LENS_SCORING_METHODOLOGY.md — единен примитив (US/EU/CN).
+
+def apply_transform(series: pd.Series, transform: str) -> pd.Series:
+    """Прилага декларираната каталожна трансформация върху сурова серия.
+
+    level → as-is; yoy_pct/mom_pct/qoq_pct → процентна промяна; first_diff → delta;
+    z_score → full-sample z. Гаси "breadth върху сурови нива" (дефект B).
+    """
+    s = series.dropna()
+    if s.empty:
+        return s
+    if transform == "yoy_pct":
+        return yoy_pct(s)
+    if transform == "mom_pct":
+        return mom_pct(s)
+    if transform == "qoq_pct":
+        return s.pct_change(periods=3) * 100
+    if transform == "first_diff":
+        return first_diff(s)
+    if transform == "z_score":
+        return z_score(s)
+    return s  # level
+
+
+def robust_stats_latest(
+    series: pd.Series,
+    window_years: int = 10,
+    min_obs: int = 36,
+) -> Optional[tuple[float, float, float]]:
+    """Робастна норма на последната точка спрямо плъзгащ прозорец.
+
+    Връща (latest_value, median, scale), scale = 1.4826 · MAD (σ-еквивалент,
+    устойчив на outlier-и). Прозорец = последните `window_years` г. ДО последното
+    наблюдение. None ако < min_obs точки.
+    """
+    s = series.dropna()
+    if s.empty:
+        return None
+    if isinstance(s.index, pd.DatetimeIndex):
+        cutoff = s.index[-1] - pd.DateOffset(years=window_years)
+        w = s[s.index >= cutoff]
+    else:
+        w = s
+    if len(w) < min_obs:
+        return None
+    med = float(w.median())
+    mad = float((w - med).abs().median())
+    scale = 1.4826 * mad
+    return float(s.iloc[-1]), med, scale
+
+
+# ============================================================
 # BREADTH PRIMITIVES (peer group level)
 # ============================================================
 
