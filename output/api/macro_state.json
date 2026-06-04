@@ -1,15 +1,15 @@
 {
   "region": "EA",
   "as_of_date": "2026-06-04",
-  "generated_at": "2026-06-04T19:55:33.735621Z",
+  "generated_at": "2026-06-04T20:57:21.844465Z",
   "executive_summary": {
     "regime_key": "soft_landing",
     "regime_label_bg": "Soft landing",
     "css_class": "regime-soft",
-    "narrative": "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията се охлажда. Fed credibility за момента издържа. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 100% (разширяване), 0 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_COMP_PER_EMPLOYEE, EA_WAGES_SALARIES, EA_RETAIL_CONF (нови 5-годишни екстремуми).",
+    "narrative": "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията се охлажда. Fed credibility за момента издържа. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 100% (разширяване), 3 аномалии, 2 нови екстремума. За наблюдение следващия релиз: FR_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
-      "Най-силна аномалия: EA_COMP_PER_EMPLOYEE z=+2.39 · NEW-5Y-MAX",
-      "3 нови екстремуми в top-5 (lookback 5г.)",
+      "Най-силна аномалия: ECB_DFR z=+6.00",
+      "2 нови екстремуми в top-6 (lookback 5г.)",
       "Активни двойки: Stagflation test=a_up_b_down; ecb_transmission=both_down"
     ],
     "primary_driver": "stagflation_test"
@@ -20,8 +20,8 @@
       "health_z": -0.497,
       "direction": "mixed",
       "breadth_pct": 57.1,
-      "anomalies_count": 2,
-      "new_extreme_count": 2,
+      "anomalies_count": 1,
+      "new_extreme_count": 0,
       "intra_divergences": [
         {
           "lens": "labor",
@@ -72,8 +72,8 @@
       "health_z": 0.015,
       "direction": "mixed",
       "breadth_pct": 20.0,
-      "anomalies_count": 2,
-      "new_extreme_count": 1,
+      "anomalies_count": 1,
+      "new_extreme_count": 0,
       "intra_divergences": []
     },
     "inflation": {
@@ -90,86 +90,102 @@
       "health_z": -0.398,
       "direction": "mixed",
       "breadth_pct": 25.0,
-      "anomalies_count": 0,
-      "new_extreme_count": 0,
+      "anomalies_count": 3,
+      "new_extreme_count": 2,
       "intra_divergences": []
     }
   },
   "top_anomalies": [
     {
-      "series_id": "EA_COMP_PER_EMPLOYEE",
-      "name_bg": "Компенсация на наетите (D1, EA-20, M€)",
+      "series_id": "ECB_DFR",
+      "name_bg": "ЕЦБ — Лихва по депозитната улеснение (DFR)",
       "lens": [
-        "labor"
+        "ecb"
       ],
-      "peer_group": "wages",
-      "z_score": 2.392,
+      "peer_group": "policy_rates",
+      "z_score": 6.0,
       "direction": "up",
-      "current_value": 1952296.2,
-      "last_date": "2025-10-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "max",
-      "narrative_hint": "Quarterly compensation of employees aggregate (EA-20). YoY growth е headline wage signal — lagged 1Q. Активира stagflation cross-lens срещу HICP services."
+      "current_value": 2.0,
+      "last_date": "2026-06-04",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Главната policy rate след 2014 (когато DFR стана binding). Replaces FEDFUNDS от US версията."
     },
     {
-      "series_id": "EA_WAGES_SALARIES",
-      "name_bg": "Работни заплати (D11, EA-20, M€)",
+      "series_id": "EA_BUND_2Y",
+      "name_bg": "Bund 2Y benchmark yield",
       "lens": [
-        "labor"
+        "credit"
       ],
-      "peer_group": "wages",
-      "z_score": 2.378,
+      "peer_group": "sovereign_yields",
+      "z_score": 5.37,
       "direction": "up",
-      "current_value": 1526560.4,
-      "last_date": "2025-10-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "max",
-      "narrative_hint": "Работни заплати (D11 = компенсация без работодателските социални вноски D12). Допълва общата компенсация D1 (EA_COMP_PER_EMPLOYEE) — същата полярност. De-singleton-ва wages."
+      "current_value": 2.7477,
+      "last_date": "2026-05-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "EA-aggregate 2Y yield. Curve slope (10Y-2Y) проксира policy expectations и recession risk."
     },
     {
-      "series_id": "EA_RETAIL_CONF",
-      "name_bg": "Доверие в търговията на дребно (DG ECFIN)",
+      "series_id": "EA_SELLING_PRICE_EXP",
+      "name_bg": "Очаквания за продажни цени (промишленост, 3m напред)",
       "lens": [
+        "inflation",
         "growth"
       ],
       "peer_group": "sentiment",
-      "z_score": -2.292,
-      "direction": "down",
-      "current_value": -10.9,
+      "z_score": 2.98,
+      "direction": "up",
+      "current_value": 27.4,
       "last_date": "2026-05-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Forward-looking inflation сигнал от business side — мениджърите казват дали ще вдигат цени. Изпреварва HICP с 3-6 месеца."
+    },
+    {
+      "series_id": "EA_EMP_EXP_SERVICES",
+      "name_bg": "Очаквания за заетост — услуги (3m напред)",
+      "lens": [
+        "labor"
+      ],
+      "peer_group": "labor_sentiment",
+      "z_score": -2.319,
+      "direction": "down",
+      "current_value": -1.8,
+      "last_date": "2026-05-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "DG ECFIN survey: forward-looking labor сигнал от услугите (~70% от GDP). Дълга история (от 1996) — за разлика от teibs030 (EA_EMPLOYMENT_EXP, 12m). Същата полярност (higher=better). De-singleton-ва labor_sentiment."
+    },
+    {
+      "series_id": "FR_10Y",
+      "name_bg": "France 10Y government bond yield",
+      "lens": [
+        "credit"
+      ],
+      "peer_group": "sovereign_yields",
+      "z_score": 2.306,
+      "direction": "up",
+      "current_value": 3.73,
+      "last_date": "2026-04-01",
       "is_new_extreme": true,
-      "new_extreme_direction": "min",
-      "narrative_hint": "Sectoral confidence — retail. Limited history в teibs020."
+      "new_extreme_direction": "max",
+      "narrative_hint": "France sovereign yield — компонент на OAT-Bund spread. Core-but-not-DE EA stress indicator."
     },
     {
-      "series_id": "EA_PPI_INTERMEDIATE",
-      "name_bg": "PPI междинни стоки (MIG ING, индекс 2021=100)",
+      "series_id": "DE_10Y",
+      "name_bg": "Germany 10Y Bund yield (Maastricht measure)",
       "lens": [
-        "inflation"
+        "credit"
       ],
-      "peer_group": "producer_prices",
-      "z_score": 2.164,
+      "peer_group": "sovereign_yields",
+      "z_score": 2.234,
       "direction": "up",
-      "current_value": 120.7,
+      "current_value": 3.0,
       "last_date": "2026-04-01",
-      "is_new_extreme": false,
-      "new_extreme_direction": null,
-      "narrative_hint": "Producer prices, intermediate goods (proxy за nonenergy PPI). Leading indicator на consumer goods inflation 3-6mo lag. Активира pipeline_inflation cross-lens срещу HICP core."
-    },
-    {
-      "series_id": "EA_RETAIL_VOL",
-      "name_bg": "Търговия на дребно — обем на продажбите (G47, индекс 2021=100)",
-      "lens": [
-        "growth"
-      ],
-      "peer_group": "hard_activity",
-      "z_score": 2.06,
-      "direction": "up",
-      "current_value": 104.0,
-      "last_date": "2026-04-01",
-      "is_new_extreme": false,
-      "new_extreme_direction": null,
-      "narrative_hint": "Consumer spending proxy. По-стабилна от IP — services-driven EA."
+      "is_new_extreme": true,
+      "new_extreme_direction": "max",
+      "narrative_hint": "Germany 10Y, Maastricht-criterion measure. Reference за BTP-Bund / OAT-Bund spread изчисления."
     }
   ],
   "cross_lens_divergences": [
