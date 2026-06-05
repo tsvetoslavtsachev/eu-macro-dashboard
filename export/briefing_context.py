@@ -108,19 +108,21 @@ def augment_snapshot_with_derived(snapshot: dict[str, pd.Series]) -> dict[str, p
     def _clean(s):
         return s.dropna() if s is not None else None
 
-    # ── Sovereign spreads (BTP-Bund, OAT-Bund) ──
+    # ── Sovereign spreads (всичките 5 периферни срещу Bund) ──
     de = _clean(augmented.get("DE_10Y"))
     if de is not None and not de.empty:
-        it = _clean(augmented.get("IT_10Y"))
-        if it is not None and not it.empty:
-            spread = (it - de).dropna()
-            if not spread.empty:
-                augmented["EA_BTP_BUND_SPREAD"] = spread
-        fr = _clean(augmented.get("FR_10Y"))
-        if fr is not None and not fr.empty:
-            spread = (fr - de).dropna()
-            if not spread.empty:
-                augmented["EA_OAT_BUND_SPREAD"] = spread
+        for ctry_key, spread_key in (
+            ("IT_10Y", "EA_BTP_BUND_SPREAD"),
+            ("FR_10Y", "EA_OAT_BUND_SPREAD"),
+            ("ES_10Y", "EA_BONO_BUND_SPREAD"),
+            ("PT_10Y", "EA_PT_BUND_SPREAD"),
+            ("GR_10Y", "EA_GR_BUND_SPREAD"),
+        ):
+            c = _clean(augmented.get(ctry_key))
+            if c is not None and not c.empty:
+                spread = (c - de).dropna()
+                if not spread.empty:
+                    augmented[spread_key] = spread
 
     # ── External: преработвателен марж (output PPI − импортни цени, index пункта) ──
     ppi = _clean(augmented.get("EA_PPI_OUTPUT"))
@@ -561,13 +563,20 @@ def _render_themes(lens_reports: dict) -> str:
         parts.append("")
         parts.append("| Peer group | breadth ↑ | breadth |z|>2 | данни | посока | екстремни членове |")
         parts.append("|---|---|---|---|---|---|")
+        hidden: list[str] = []
         for pg in rep.peer_groups:
+            if pg.n_available == 0:
+                hidden.append(pg.name)  # roadmap групи без адаптер — скрий, не показвай 0/N
+                continue
             bp = _fmt_breadth_pct(pg.breadth_positive)
             be = _fmt_breadth_pct(pg.breadth_extreme)
             n_str = f"{pg.n_available}/{pg.n_members}"
             dir_lbl = DIRECTION_LABEL_BG.get(pg.direction, pg.direction)
             ext_str = ", ".join(f"`{m}`" for m in pg.extreme_members) if pg.extreme_members else "—"
             parts.append(f"| {pg.name} | {bp} | {be} | {n_str} | {dir_lbl} | {ext_str} |")
+        if hidden:
+            parts.append("")
+            parts.append(f"_Скрити (roadmap — серии без адаптер още): {', '.join(hidden)}._")
         parts.append("")
     return "\n".join(parts)
 

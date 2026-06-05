@@ -315,9 +315,13 @@ def _render_lens_block(lens: str, breadth_report, anomaly_report) -> str:
     lens_label = LENS_LABEL_BG.get(lens, lens)
     icon = LENS_ICON.get(lens, "")
 
-    # Peer-group breadth table
+    # Peer-group breadth table (скрий roadmap групи с 0 налични серии)
     rows = []
+    hidden_pgs: list[str] = []
     for pg in breadth_report.peer_groups:
+        if pg.n_available == 0:
+            hidden_pgs.append(pg.name)
+            continue
         bp = _fmt_breadth_pct(pg.breadth_positive)
         be = _fmt_breadth_pct(pg.breadth_extreme)
         n_str = f"{pg.n_available}/{pg.n_members}"
@@ -357,6 +361,12 @@ def _render_lens_block(lens: str, breadth_report, anomaly_report) -> str:
         '<div class="lens-anoms"><h4>Аномалии в темата</h4><p class="muted">Няма серии с |z|&gt;2.</p></div>'
     )
 
+    hidden_html = (
+        f'<p class="muted" style="font-size:11px">Скрити (roadmap — серии без адаптер още): '
+        f'{", ".join(hidden_pgs)}.</p>'
+        if hidden_pgs else ""
+    )
+
     return f"""
 <section class="brief-section lens-block" data-lens="{lens}">
   <h2>{icon} {lens_label}</h2>
@@ -368,6 +378,7 @@ def _render_lens_block(lens: str, breadth_report, anomaly_report) -> str:
     </tr></thead>
     <tbody>{''.join(rows)}</tbody>
   </table>
+  {hidden_html}
 
   {anoms_html}
 </section>
