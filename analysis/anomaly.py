@@ -135,6 +135,10 @@ def compute_anomalies(
         meta = SERIES_CATALOG.get(key)
         if meta is None:
             continue  # серия не е в каталога; skip за safety
+        if not meta.get("lens"):
+            continue  # lens=[] компонентни серии (ECB_DFR, PPI_OUTPUT, EXP_UV/IMP_UV) —
+                      # захранват derived/reference, НЕ са за display. Гаси near-zero-MAD
+                      # артефакта на номиналния DFR (z=+6) да изтича в топ-аномалиите.
         if series is None or series.dropna().empty:
             continue
 

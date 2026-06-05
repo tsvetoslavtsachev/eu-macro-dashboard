@@ -37,6 +37,7 @@ from sources.ecb_adapter import EcbAdapter
 from sources.eurostat_adapter import EurostatAdapter
 from core.scorer import score_series
 from core.display import change_kind, compute_change
+from core.primitives import apply_transform
 from analysis.breadth import compute_lens_breadth
 from analysis.health import lens_health
 from analysis.divergence import compute_cross_lens_divergence, compute_intra_lens_divergence
@@ -304,20 +305,15 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
         kind = change_kind(series_id, meta)
         transform = meta.get("transform", "level")
 
-        # Прилагаме transform: за nominalно растящи серии каталогът декларира
-        # transform=yoy_pct/qoq_pct → графиката и percentile се правят върху
-        # процентната промяна, не върху суровото ниво. Иначе percentile
-        # винаги клони към 100 за растящи серии.
-        if transform == "yoy_pct":
-            chart_periods = 12
-        elif transform == "qoq_pct":
-            chart_periods = 3
-        else:
-            chart_periods = None
-
-        if chart_periods is not None:
+        # Дисплейната серия = каталожната трансформация (frequency-aware, ОГЛЕДАЛО
+        # на скоринга чрез apply_transform). За yoy_pct/qoq_pct/mom_pct → темпът;
+        # иначе суровото ниво. Гаси percentile-pinning за растящите серии И бъга,
+        # при който ТРИМЕСЕЧНИ yoy_pct серии (заплати) показваха 3-ГОДИШНА промяна
+        # (хардкод chart_periods=12 върху тримесечни → 12 тримесечия).
+        is_rate_transform = transform in ("yoy_pct", "mom_pct", "qoq_pct")
+        if is_rate_transform:
             try:
-                display_series = compute_change(raw_series, "percent", periods=chart_periods).dropna()
+                display_series = apply_transform(raw_series, transform).dropna()
             except Exception:
                 display_series = raw_series
         else:
@@ -330,8 +326,8 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
         latest_val = float(display_filtered.iloc[-1])
         latest_date = str(display_filtered.index[-1].date())
 
-        if chart_periods is not None:
-            yoy_val = None
+        if is_rate_transform:
+            yoy_val = None   # display_series ВЕЧЕ е темпът; отделна yoy промяна е дублаж
         else:
             try:
                 changes = compute_change(filtered, kind, periods=12)
