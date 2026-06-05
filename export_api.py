@@ -374,6 +374,8 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
                 "z_score": _clean(score_data.get("z_score")),
                 "health_z": _clean(score_data.get("health_z")),
                 "score": _clean(score_data.get("score")),
+                "direction": score_data.get("direction"),
+                "scoring_mode": score_data.get("scoring_mode"),
                 "regime": score_data.get("regime_label"),
             },
             "chart": {

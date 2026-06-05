@@ -69,6 +69,10 @@ ABS_PEER_GROUPS = {
 # но си остават rate-ове (Δ в bps, не % change на лихва).
 BPS_SIDS_OVERRIDE: set[str] = {"ECB_DFR", "ECB_MRO", "ECB_MLF", "ECB_ESTR"}
 
+# Series-override → absolute: серии, които ПРЕСИЧАТ нулата → % change е безсмислен.
+# EA_TRADE_BALANCE (баланс, дефицит/излишък); EA_MARGIN (output−input спред).
+ABS_SIDS_OVERRIDE: set[str] = {"EA_TRADE_BALANCE", "EA_MARGIN"}
+
 
 # Transform-ите които превръщат level в rate (delta of result е в bps)
 RATE_TRANSFORMS = {"yoy_pct", "mom_pct", "qoq_pct"}
@@ -79,13 +83,16 @@ def change_kind(sid: str, meta: dict) -> str:
 
     Приоритет (по ред на проверка):
       1. BPS_SIDS_OVERRIDE — explicit override
-      2. transform ∈ RATE_TRANSFORMS → "bps" (delta of rate)
-      3. peer_group ∈ BPS_PEER_GROUPS → "bps"
-      4. peer_group ∈ ABS_PEER_GROUPS → "absolute"
-      5. default → "percent"
+      2. ABS_SIDS_OVERRIDE — explicit override (cross-zero серии)
+      3. transform ∈ RATE_TRANSFORMS → "bps" (delta of rate)
+      4. peer_group ∈ BPS_PEER_GROUPS → "bps"
+      5. peer_group ∈ ABS_PEER_GROUPS → "absolute"
+      6. default → "percent"
     """
     if sid in BPS_SIDS_OVERRIDE:
         return "bps"
+    if sid in ABS_SIDS_OVERRIDE:
+        return "absolute"
     transform = meta.get("transform", "level")
     if transform in RATE_TRANSFORMS:
         return "bps"

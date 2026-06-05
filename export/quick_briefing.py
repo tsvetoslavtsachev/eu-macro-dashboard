@@ -80,12 +80,26 @@ def _regime_badge_colors(regime_key: str) -> tuple[str, str, str]:
 
 
 def _composite_score(exec_snapshot, snapshot=None) -> float:
-    """Mean lens health score (0–100). С `snapshot` → единният health примитив
-    (робастен z + полярност); без него → fallback към стария breadth_agg×100."""
+    """Претеглен lens health score (0–100, по MODULE_WEIGHTS). С `snapshot` → единният
+    health примитив (робастен z + полярност); без него → fallback breadth_agg×100.
+
+    Теглата (config.MODULE_WEIGHTS): inflation .30 (ECB single mandate), growth/credit
+    .20, labor/external .15. Липсваща леща (insufficient data) изпада и останалите се
+    ренормализират. Всички тегла 0 → равна средна (safety)."""
     if snapshot is not None:
-        vals = [s for s in (lens_health(r.lens, snapshot).get("score")
-                            for r in exec_snapshot.lens_rows) if s is not None]
-        return (sum(vals) / len(vals)) if vals else float("nan")
+        from config import MODULE_WEIGHTS
+        pairs = [
+            (sc, MODULE_WEIGHTS.get(r.lens, 0.0))
+            for r in exec_snapshot.lens_rows
+            for sc in [lens_health(r.lens, snapshot).get("score")]
+            if sc is not None
+        ]
+        if not pairs:
+            return float("nan")
+        tot_w = sum(w for _, w in pairs)
+        if tot_w > 0:
+            return sum(sc * w for sc, w in pairs) / tot_w
+        return sum(sc for sc, _ in pairs) / len(pairs)  # safety: всички тегла 0 → mean
     vals = [
         r.breadth_agg for r in exec_snapshot.lens_rows
         if r.breadth_agg is not None and not pd.isna(r.breadth_agg)
@@ -209,7 +223,7 @@ def _render_data_quality_section() -> str:
     <div class="lens-bars">
       <h3>Бележки за данните</h3>
       <div style="color:#8b949e;font-size:12px;line-height:1.6">
-        Композитът и lens score-овете са средно на единния health примитив: робастен z (median/MAD) спрямо собствената 10-годишна плъзгаща норма + полярност, мапнат към 0–100 (50 = близката норма). Колоната „Здраве" ползва същия примитив върху трансформираната серия (темп за номиналните). „Тренд" е траекторията на здравето (нагоре = по-здраво за всяка серия), а стрелката ▲▬▼ показва посоката за последните ~3 месеца. Аномалиите са робастен z на темпа спрямо 10-г. норма (|z|&gt;2 = екстремно четене), нов екстремум — спрямо 5-г. Месечните серии се движат по-бавно от седмичните. За пълния анализ (executive summary, WoW delta, falsifiers, исторически аналози, journal) виж подробния briefing.
+        Композитът е ПРЕТЕГЛЕНО средно на lens score-овете (по мандатна тежест: инфлация .30, растеж/кредит .20, труд/външен сектор .15); lens score-овете са на единния health примитив: робастен z (median/MAD) спрямо собствената 10-годишна плъзгаща норма + полярност, мапнат към 0–100 (50 = близката норма). Външен сектор ползва момент-скоринг (изгладен Δ). Колоната „Здраве" ползва същия примитив върху трансформираната серия (темп за номиналните). „Тренд" е траекторията на здравето (нагоре = по-здраво за всяка серия), а стрелката ▲▬▼ показва посоката за последните ~3 месеца. Аномалиите са робастен z на темпа спрямо 10-г. норма (|z|&gt;2 = екстремно четене), нов екстремум — спрямо 5-г. Месечните серии се движат по-бавно от седмичните. За пълния анализ (executive summary, WoW delta, falsifiers, исторически аналози, journal) виж подробния briefing.
       </div>
     </div>"""
 
@@ -277,7 +291,7 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
     from catalog.series import series_by_lens
     from catalog.polarity import polarity_for
     from core.scorer import score_series
-    from core.primitives import apply_transform
+    from core.primitives import apply_transform, momentum_signal
 
     rows = []
     for meta in series_by_lens(lens):
@@ -286,22 +300,27 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
         if s is None:
             continue
         transform = meta.get("transform", "level")
+        scoring_mode = meta.get("scoring_mode", "level")
         pol = polarity_for(key, lens)
         try:
             sd = score_series(
                 s, name=meta.get("name_bg", key),
                 is_rate=bool(meta.get("is_rate", False)),
                 transform=transform, polarity=pol,
-                scoring_mode=meta.get("scoring_mode", "level"),
+                scoring_mode=scoring_mode,
             )
         except Exception:
             continue
         if sd.get("score") is None or sd.get("display_value") is None:
             continue
         # Спарклайн = траектория на ЗДРАВЕТО (полярностно ориентирана) → нагоре
-        # ВИНАГИ = по-здраво, за всички серии (цвят+форма+стрелка не си противоречат).
+        # ВИНАГИ = по-здраво (цвят+форма+стрелка не си противоречат). За момент-серии
+        # това е траекторията на ИЗГЛАДЕНИЯ Δ (същият сигнал, който се скорира), не нивото.
         try:
-            t = apply_transform(s, transform).dropna().tail(24)
+            base = apply_transform(s, transform)
+            if scoring_mode == "momentum":
+                base = momentum_signal(base)
+            t = base.dropna().tail(24)
             if isinstance(pol, tuple) and pol and pol[0] == "U":
                 center = float(pol[2]) if pol[1] == "target" else float(t.median())
                 spark = [-abs(float(v) - center) for v in t.values]
@@ -535,7 +554,7 @@ body {{
       <div class="composite-info">
         <h2>Композитен Macro Score</h2>
         <span class="regime-badge" style="background:{regime_bg_c};color:{regime_fg_c};border:1px solid {regime_bd_c}">{regime_label_bg}</span>
-        <div class="description">Средно на lens health score-овете (робастен z спрямо 10-г. норма; 50 = норма) от {len(exec_snapshot.lens_rows)} lens-а. Score &lt; {SCORE_RED:.0f} = свиване; &gt; {SCORE_GREEN:.0f} = експанзия; между двата = смесен/преходен.</div>
+        <div class="description">Претеглено средно на lens health score-овете (робастен z спрямо 10-г. норма; 50 = норма) от {len(exec_snapshot.lens_rows)} lens-а — по мандатна тежест (инфлация най-много). Score &lt; {SCORE_RED:.0f} = свиване; &gt; {SCORE_GREEN:.0f} = експанзия; между двата = смесен/преходен.</div>
         {deep_btn}
       </div>
     </div>
