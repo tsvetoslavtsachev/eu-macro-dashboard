@@ -571,7 +571,10 @@ def _render_themes(lens_reports: dict) -> str:
             bp = _fmt_breadth_pct(pg.breadth_positive)
             be = _fmt_breadth_pct(pg.breadth_extreme)
             n_str = f"{pg.n_available}/{pg.n_members}"
-            dir_lbl = DIRECTION_LABEL_BG.get(pg.direction, pg.direction)
+            # Структурен singleton (1 член в каталога) ≠ липсващи данни: breadth е
+            # неприложим по дизайн, но серията пак се скорира в lens health.
+            dir_lbl = ("единична серия (нужни ≥2 за breadth)" if pg.n_members == 1
+                       else DIRECTION_LABEL_BG.get(pg.direction, pg.direction))
             ext_str = ", ".join(f"`{m}`" for m in pg.extreme_members) if pg.extreme_members else "—"
             parts.append(f"| {pg.name} | {bp} | {be} | {n_str} | {dir_lbl} | {ext_str} |")
         if hidden:

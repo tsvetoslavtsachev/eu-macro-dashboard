@@ -24,8 +24,8 @@ POLARITY: dict[str, Any] = {
     # LABOR / wages (labor-смисъл: по-високи = по-силен труд)
     "EA_COMP_PER_EMPLOYEE": +1, "EA_WAGES_SALARIES": +1,
 
-    # GROWTH / country_leading
-    "NBB_BCI": +1, "SENTIX_EA": +1, "ZEW_EXPECTATIONS_DE": +1, "IFO_CLIMATE_DE": +1,
+    # GROWTH / country_leading — по-висока бизнес увереност = по-здрав растеж
+    "NBB_BCI": +1, "OECD_BCI_DE": +1, "OECD_BCI_EA": +1,
     # GROWTH / hard_activity
     "EA_IP": +1, "EA_RETAIL_VOL": +1, "EA_BUILDING_PRODUCTION": +1, "EA_GDP_QOQ": +1,
     # GROWTH / leading_indicators

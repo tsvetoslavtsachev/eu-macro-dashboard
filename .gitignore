@@ -11,6 +11,10 @@ data/ecb_cache.json
 data/ecb_cache.json.bak
 data/eurostat_cache.json
 data/eurostat_cache.json.bak
+data/oecd_cache.json
+data/oecd_cache.json.bak
+data/nbb_cache.json
+data/nbb_cache.json.bak
 data/state/
 
 # ─── Journal content (framework-only is public; notes are private) ──────────

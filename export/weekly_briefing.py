@@ -325,8 +325,11 @@ def _render_lens_block(lens: str, breadth_report, anomaly_report) -> str:
         bp = _fmt_breadth_pct(pg.breadth_positive)
         be = _fmt_breadth_pct(pg.breadth_extreme)
         n_str = f"{pg.n_available}/{pg.n_members}"
-        dir_label = DIRECTION_LABEL_BG.get(pg.direction, pg.direction)
-        dir_class = DIRECTION_CSS.get(pg.direction, "dir-ins")
+        # Структурен singleton (1 член) ≠ липсващи данни: breadth неприложим по
+        # дизайн; серията пак се скорира в lens health. Различаваме от partial snapshot.
+        is_singleton = pg.n_members == 1
+        dir_label = "единична серия" if is_singleton else DIRECTION_LABEL_BG.get(pg.direction, pg.direction)
+        dir_class = "dir-ins" if is_singleton else DIRECTION_CSS.get(pg.direction, "dir-ins")
         ext_str = " ".join(
             f'<span class="ext-mark">{m}</span>' for m in pg.extreme_members
         ) if pg.extreme_members else ""
@@ -597,7 +600,7 @@ def _render_footer(today: date, n_series: int) -> str:
   </details>
   <details class="method">
     <summary><strong>Breadth ↑ (per peer group)</strong></summary>
-    <p>% серии в peer group с положителен 1-периоден momentum. Прагове: &gt;60% разширяване, &lt;40% свиване, между = смесено. Под 2 серии = недостатъчно данни.</p>
+    <p>% серии в peer group с положителен 1-периоден momentum. Прагове: &gt;60% разширяване, &lt;40% свиване, между = смесено. Под 2 налични серии = недостатъчно данни; група с 1 член (по дизайн) = единична серия — breadth неприложим (серията пак се скорира в lens health).</p>
   </details>
   <details class="method">
     <summary><strong>Breadth |z|&gt;2</strong></summary>
@@ -617,7 +620,7 @@ def _render_footer(today: date, n_series: int) -> str:
   </details>
   <details class="method">
     <summary><strong>Caveats и ограничения</strong></summary>
-    <p>v1 — {n_series} серии; пo-къса EA история (1999) от US (1970+); DG ECFIN sentiment series имат само 12mo (teibs010/020/030); SPF е quarterly (forward-fill за monthly join); yield curve = 10Y-2Y (10Y-3M не е в catalog). Малки peer groups (1 серия) → "недостатъчно данни"; нужни ≥2 серии за breadth.</p>
+    <p>v1 — {n_series} серии; пo-къса EA история (1999) от US (1970+); DG ECFIN sentiment series имат само 12mo (teibs010/020/030); SPF е quarterly (forward-fill за monthly join); yield curve = 10Y-2Y (10Y-3M не е в catalog). Група с 1 член (по дизайн) → "единична серия"; breadth изисква ≥2 серии (самата серия пак се скорира в lens health).</p>
   </details>
   <p class="generated">Генериран на {today.strftime('%d %B %Y, %H:%M')} ·
      <a href="https://github.com/tsvetoslavtsachev/eu-macro-dashboard">eu-macro-dashboard</a></p>

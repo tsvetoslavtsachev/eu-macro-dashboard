@@ -32,7 +32,7 @@
 
 ```
 eu_macro_dashboard/
-├── run.py                ← CLI entry. --status / --modules / --briefing
+├── run.py                ← CLI entry. --status / --briefing
 ├── config.py             ← Endpoints, weights, BG regime labels
 ├── catalog/series.py     ← 16 серии metadata (single source of truth)
 ├── catalog/cross_lens_pairs.py ← празен в v1; popular в Phase 1.5+
@@ -43,7 +43,6 @@ eu_macro_dashboard/
 ├── core/
 │   ├── primitives.py     ← math (z_score, breadth, momentum)
 │   └── scorer.py         ← score_series, composite_score, get_regime
-├── modules/              ← 4 lens модула (labor, inflation, growth, ecb)
 ├── analysis/             ← agnostic analytics (breadth, divergence, anomaly,
 │                           executive, macro_vector, analog_matcher, forward_path)
 ├── export/
@@ -71,9 +70,6 @@ python run.py --briefing
 
 # Пълен briefing
 python run.py --briefing --with-analogs --with-journal
-
-# Console summary на модулите
-python run.py --modules
 
 # Tests
 pytest tests/ -q

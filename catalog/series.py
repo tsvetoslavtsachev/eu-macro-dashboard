@@ -56,7 +56,7 @@ from typing import Any
 # WHITELISTS
 # ============================================================
 
-ALLOWED_SOURCES = {"ecb", "eurostat", "oecd", "derived", "pending", "bloomberg_bridge"}
+ALLOWED_SOURCES = {"ecb", "eurostat", "oecd", "nbb", "derived", "pending", "bloomberg_bridge"}
 ALLOWED_REGIONS = {"EA", "EU", "DE", "FR", "IT", "ES", "PT", "GR", "BE", "GLOBAL"}
 # F-teardown 2026-06-05: "ecb" леща РАЗГЛОБЕНА → заменена с "external".
 # real_dfr+balance_sheet → credit; суровите DFR/MRO/MLF/ESTR → lens=[]; OIS изтрити.
@@ -1046,24 +1046,29 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
 
     # ════════════════════════════════════════════════════════
-    # GROWTH (leading) — Country sentiment indicators
+    # GROWTH (leading) — Business confidence (country + EA)
     # ════════════════════════════════════════════════════════
-    # Тези серии са leading EA-wide индикатори чрез country signals.
-    # NBB и Sentix се publish-ват преди ESI (DG ECFIN) на месеца — leads ~2-3w.
-    # ZEW и IFO са German-specific но DE е 30% от EA GDP → drive-ват EA picture.
-    # Status: source="pending" — adapters следват в Phase EU.2 implementation.
-    # Sources:
-    #   NBB BCI:  https://www.nbb.be/en/statistics/indicator-business-confidence
-    #   Sentix:   https://www.sentix.de/index.php/en/economic-index.html (Bloomberg за history)
-    #   ZEW:      https://www.zew.de/en/research/zew-financial-market-survey (Bundesbank API за history)
-    #   IFO:      https://www.ifo.de/en/survey/ifo-business-climate-index (Bundesbank API за history)
+    # Forward-looking увереност — lead-ва hard data (IP/GDP) и DG ECFIN ESI.
+    # Phase EU.2 (2026-06-05): source-research verify-на безплатните programmatic
+    # endpoint-и. ЗАКОВАНИ (всички SDMX-CSV, no auth, дълбока история, live-verified):
+    #   NBB BCI (BE):  нативна белгийска бизнес анкета (synthetic curve, SA, 1980→).
+    #                  BE SME = поддоставчици на DE/FR auto+chemicals → order book lead-ва EA.
+    #   OECD BCI (DE): хармонизирана бизнес увереност, amplitude-adj (avg=100, 1962→).
+    #                  DE = ~30% EA GDP → drive-ва EA picture.
+    #   OECD BCI (EA): EA20 агрегат (1985→) — директен EA-wide leading сигнал.
+    # RETIRED 2026-06-05 (нямат БЕЗПЛАТЕН programmatic източник — verified live):
+    #   ifo / ZEW — Bundesbank НЕ ги носи (proprietary; OECD BCI(DE) е harmonized заместител).
+    #   Sentix    — само платен Sentix REST API / Bloomberg (ECB/Eurostat/FRED/DBnomics = 0 hits).
+    # Sources (verified live 2026-06-05):
+    #   NBB:  nsidisseminate-stat.nbb.be/rest (DF_BUSSURVM, SYNC curve; старият stat.nbb.be е мъртъв)
+    #   OECD: sdmx.oecd.org/public/rest (DSD_STES@DF_CLI, MEASURE=BCICP, amplitude-adjusted)
 
     "NBB_BCI": {
-        "source": "pending",
-        "id": "NBB_BCI",
+        "source": "nbb",
+        "id": "https://nsidisseminate-stat.nbb.be/rest/data/BE2,DF_BUSSURVM,1.0/M.SYNC.BE.A999.S/all",
         "region": "BE",
         "name_bg": "NBB Business Climate Indicator (Белгия — EA leading proxy)",
-        "name_en": "NBB Business Climate Indicator (Belgium)",
+        "name_en": "NBB Business Climate Indicator (Belgium, synthetic curve, SA)",
         "lens": ["growth"],
         "peer_group": "country_leading",
         "tags": [],
@@ -1076,59 +1081,41 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "Белгийските SME са поддоставчици на DE/FR auto + chemicals — order book "
                           "лее 2-3m преди EA PMI/ESI. Класически leading индикатор за EA industrial cycle.",
     },
-    "SENTIX_EA": {
-        "source": "pending",
-        "id": "SENTIX_EA",
+    "OECD_BCI_DE": {
+        "source": "oecd",
+        "id": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,/DEU.M.BCICP.IX._Z.AA.IX._Z.H?format=csvfile",
+        "region": "DE",
+        "name_bg": "OECD бизнес увереност (Германия, amplitude-adj)",
+        "name_en": "OECD Business Confidence Indicator (Germany, BCICP, amplitude-adjusted)",
+        "lens": ["growth"],
+        "peer_group": "country_leading",
+        "tags": [],
+        "transform": "level",
+        "is_rate": False,
+        "historical_start": "1962-12-01",
+        "release_schedule": "monthly",
+        "typical_release": "month_end",
+        "revision_prone": True,
+        "narrative_hint": "Хармонизирана бизнес увереност (avg=100). DE = ~30% EA GDP → водещ за EA "
+                          "industrial cycle. Замества proprietary ifo/ZEW (без безплатен feed).",
+    },
+    "OECD_BCI_EA": {
+        "source": "oecd",
+        "id": "https://sdmx.oecd.org/public/rest/data/OECD.SDD.STES,DSD_STES@DF_CLI,/EA20.M.BCICP.IX._Z.AA.IX._Z.H?format=csvfile",
         "region": "EA",
-        "name_bg": "Sentix Economic Index (EA investor sentiment)",
-        "name_en": "Sentix Economic Index (EA, current + 6m expectations)",
+        "name_bg": "OECD бизнес увереност (Еврозона EA20, amplitude-adj)",
+        "name_en": "OECD Business Confidence Indicator (Euro area 20, BCICP, amplitude-adjusted)",
         "lens": ["growth"],
         "peer_group": "country_leading",
         "tags": [],
         "transform": "level",
         "is_rate": False,
-        "historical_start": "2002-02-01",
+        "historical_start": "1985-01-01",
         "release_schedule": "monthly",
-        "typical_release": "first_monday",
-        "revision_prone": False,
-        "narrative_hint": "Investor sentiment via 5000+ респонденти. Published 1-ви понеделник, "
-                          "leads ESI с ~3-4 седмици.",
-    },
-    "ZEW_EXPECTATIONS_DE": {
-        "source": "pending",
-        "id": "ZEW_EXPECTATIONS_DE",
-        "region": "DE",
-        "name_bg": "ZEW Economic Sentiment (Германия, expectations 6m)",
-        "name_en": "ZEW Economic Sentiment Indicator (Germany, 6-month expectations)",
-        "lens": ["growth"],
-        "peer_group": "country_leading",
-        "tags": [],
-        "transform": "level",
-        "is_rate": False,
-        "historical_start": "1991-12-01",
-        "release_schedule": "monthly",
-        "typical_release": "second_tuesday",
-        "revision_prone": False,
-        "narrative_hint": "350+ financial analysts. DE-specific но drives EA picture (DE = 30% EA GDP). "
-                          "Published 2-ри вторник, leads ESI.",
-    },
-    "IFO_CLIMATE_DE": {
-        "source": "pending",
-        "id": "IFO_CLIMATE_DE",
-        "region": "DE",
-        "name_bg": "IFO Geschäftsklima (Германия business climate)",
-        "name_en": "IFO Business Climate Index (Germany)",
-        "lens": ["growth"],
-        "peer_group": "country_leading",
-        "tags": [],
-        "transform": "level",
-        "is_rate": False,
-        "historical_start": "1991-01-01",
-        "release_schedule": "monthly",
-        "typical_release": "around_25th",
-        "revision_prone": False,
-        "narrative_hint": "9000+ DE фирми. Главен German business cycle benchmark. "
-                          "Sub-components: current_assessment + expectations.",
+        "typical_release": "month_end",
+        "revision_prone": True,
+        "narrative_hint": "EA20 агрегат на бизнес увереността — директен EA-wide leading сигнал; "
+                          "lead-ва hard data (IP/GDP) и DG ECFIN ESI.",
     },
 
     # ════════════════════════════════════════════════════════

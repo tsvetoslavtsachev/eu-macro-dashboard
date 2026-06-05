@@ -55,7 +55,6 @@ python run.py --briefing
 python run.py --briefing --with-analogs --with-journal
 
 # По-подробни режими
-python run.py --modules        # console summary на 4-те lens модула
 python run.py --status         # cache status report
 ```
 
@@ -69,7 +68,7 @@ python run.py --status         # cache status report
 
 ```
 eu_macro_dashboard/
-├── run.py                # CLI entry point (--status / --modules / --briefing)
+├── run.py                # CLI entry point (--status / --briefing)
 ├── run.bat               # Windows launcher menu
 ├── config.py             # ECB/Eurostat endpoints, EA weights, BG labels
 ├── catalog/

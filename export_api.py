@@ -33,8 +33,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 from catalog.series import SERIES_CATALOG, series_by_source
 from catalog.polarity import polarity_for
-from sources.ecb_adapter import EcbAdapter
-from sources.eurostat_adapter import EurostatAdapter
+from sources import build_adapters
 from core.scorer import score_series
 from core.display import change_kind, compute_change
 from core.primitives import apply_transform
@@ -67,6 +66,8 @@ CHART_SERIES = {
         "EA_CONSUMER_CONF", "EA_INDUSTRY_CONF", "EA_SERVICES_CONF",
         "EA_CONSTRUCTION_CONF", "EA_RETAIL_CONF",
         "EA_CAPACITY_UTIL", "EA_PRODUCTION_EXP",
+        # country_leading (Phase EU.2) — business confidence leads hard data/ESI
+        "NBB_BCI", "OECD_BCI_DE", "OECD_BCI_EA",
     ],
     "credit": [
         "EA_CISS", "EA_M3_YOY", "EA_BANK_LOANS_NFC", "EA_BANK_LOANS_HH",
@@ -399,10 +400,7 @@ def main(args) -> None:
     print(f"  {datetime.now().strftime('%A, %d %B %Y · %H:%M')}")
     print("=" * 60 + "\n")
 
-    adapters = {
-        "ecb": EcbAdapter(),
-        "eurostat": EurostatAdapter(),
-    }
+    adapters = build_adapters()
 
     if args.refresh:
         print("Refresh на ECB/Eurostat данни (force)...")

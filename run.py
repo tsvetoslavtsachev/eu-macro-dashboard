@@ -48,8 +48,7 @@ from config import (
 
 def cmd_status(args) -> int:
     """Data Status Screen workflow. Phase 1."""
-    from sources.ecb_adapter import EcbAdapter
-    from sources.eurostat_adapter import EurostatAdapter
+    from sources import build_adapters
     from export.data_status import generate_status_report
     from catalog.series import SERIES_CATALOG, series_by_source
 
@@ -59,10 +58,7 @@ def cmd_status(args) -> int:
         print("   ⚠ Catalog is empty.")
         return 0
 
-    adapters = {
-        "ecb": EcbAdapter(),
-        "eurostat": EurostatAdapter(),
-    }
+    adapters = build_adapters()
 
     if args.refresh:
         print("\n🔄 --refresh: fetching all catalog series...")
@@ -151,67 +147,11 @@ def _auto_refresh_stale(adapters: dict, verbose: bool = True) -> int:
     return total_stale
 
 
-def cmd_modules(args) -> int:
-    """Модулен summary: оценява всеки lens (Phase 2). Console output."""
-    from sources.ecb_adapter import EcbAdapter
-    from sources.eurostat_adapter import EurostatAdapter
-    import modules.labor as labor_mod
-    import modules.inflation as inflation_mod
-    import modules.growth as growth_mod
-    import modules.credit as credit_mod
-    import modules.ecb as ecb_mod
-    from config import MODULE_WEIGHTS
-
-    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
-    snapshot = _build_snapshot(adapters, force=args.refresh)
-
-    if not snapshot:
-        print("⚠ Snapshot е празен. Стартирай `python run.py --status --refresh` първо.")
-        return 1
-
-    print(f"\n📦 Snapshot: {len(snapshot)} серии заредени")
-    print()
-
-    modules_to_run = [
-        ("labor",     labor_mod),
-        ("inflation", inflation_mod),
-        ("growth",    growth_mod),
-        ("credit",    credit_mod),
-        ("ecb",       ecb_mod),
-    ]
-
-    results: list[dict] = []
-    for name, mod in modules_to_run:
-        try:
-            result = mod.run(snapshot)
-        except Exception as e:
-            print(f"  ❌ {name}: грешка — {e}")
-            continue
-        results.append(result)
-        score = result["composite"]
-        regime = result["regime"]
-        n_indic = len(result.get("indicators", {}))
-        print(f"  {result['icon']} {result['label']:25}  score={score:5.1f}  {regime:25}  ({n_indic} серии)")
-
-    # Composite macro score
-    weighted = sum(
-        r["composite"] * MODULE_WEIGHTS.get(r["module"], 0)
-        for r in results
-    )
-    total_weight = sum(MODULE_WEIGHTS.get(r["module"], 0) for r in results)
-    overall = round(weighted / total_weight, 1) if total_weight else 50.0
-    print()
-    print(f"  📊 Композитен Macro Score: {overall:.1f}")
-
-    return 0
-
-
 def cmd_refresh_only(args) -> int:
     """Pure data refresh без HTML output. Phase 7."""
-    from sources.ecb_adapter import EcbAdapter
-    from sources.eurostat_adapter import EurostatAdapter
+    from sources import build_adapters
 
-    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+    adapters = build_adapters()
 
     if args.refresh:
         print("🔄 --refresh-only --refresh: force fetch на всички серии...")
@@ -240,8 +180,7 @@ def cmd_refresh_only(args) -> int:
 
 def cmd_export_context(args) -> int:
     """Markdown context export за LLM analysis (Phase 9)."""
-    from sources.ecb_adapter import EcbAdapter
-    from sources.eurostat_adapter import EurostatAdapter
+    from sources import build_adapters
     from export.briefing_context import generate_briefing_context, augment_snapshot_with_derived
     from analysis.breadth import compute_lens_breadth
     from analysis.divergence import compute_cross_lens_divergence
@@ -249,7 +188,7 @@ def cmd_export_context(args) -> int:
     from catalog.series import ALLOWED_LENSES
     from datetime import date
 
-    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+    adapters = build_adapters()
 
     if not args.refresh:
         _auto_refresh_stale(adapters, verbose=True)
@@ -308,13 +247,12 @@ def cmd_briefing(args) -> int:
 
     Phase 7: auto-refresh kicks in без --refresh флаг — fetch-ва само stale.
     """
-    from sources.ecb_adapter import EcbAdapter
-    from sources.eurostat_adapter import EurostatAdapter
+    from sources import build_adapters
     from export.weekly_briefing import generate_weekly_briefing
     from export.quick_briefing import generate_quick_briefing
     from export.briefing_context import augment_snapshot_with_derived
 
-    adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
+    adapters = build_adapters()
 
     if not args.refresh:
         _auto_refresh_stale(adapters, verbose=True)
@@ -389,8 +327,6 @@ def main() -> int:
     )
     parser.add_argument("--status", action="store_true",
                         help="Data Status Screen (Phase 1)")
-    parser.add_argument("--modules", action="store_true",
-                        help="Modules summary — labor/inflation/growth/ecb (Phase 2)")
     parser.add_argument("--refresh-only", action="store_true",
                         help="Refresh данни без да генерира briefing (Phase 7)")
     parser.add_argument("--briefing", action="store_true",
@@ -419,8 +355,6 @@ def main() -> int:
         return cmd_status(args)
     if args.refresh_only:
         return cmd_refresh_only(args)
-    if args.modules:
-        return cmd_modules(args)
     if args.briefing:
         return cmd_briefing(args)
     if args.export_context:
