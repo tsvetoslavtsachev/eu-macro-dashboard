@@ -1,7 +1,7 @@
 {
   "region": "EA",
   "as_of_date": "2026-06-05",
-  "generated_at": "2026-06-05T07:49:38.699074Z",
+  "generated_at": "2026-06-05T13:24:40.286171Z",
   "executive_summary": {
     "regime_key": "soft_landing",
     "regime_label_bg": "Soft landing",
@@ -16,10 +16,10 @@
   },
   "lenses": {
     "labor": {
-      "score": 37.8,
-      "health_z": -0.497,
-      "direction": "mixed",
-      "breadth_pct": 57.1,
+      "score": 36.5,
+      "health_z": -0.553,
+      "direction": "contracting",
+      "breadth_pct": 42.9,
       "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": [
@@ -68,10 +68,10 @@
       ]
     },
     "growth": {
-      "score": 50.3,
-      "health_z": 0.011,
+      "score": 44.6,
+      "health_z": -0.218,
       "direction": "mixed",
-      "breadth_pct": 20.0,
+      "breadth_pct": 15.4,
       "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": []
@@ -86,8 +86,8 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 42.2,
-      "health_z": -0.314,
+      "score": 42.3,
+      "health_z": -0.31,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -319,7 +319,7 @@
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
       "breadth_a": 0.444,
-      "breadth_b": 0.75
+      "breadth_b": 0.5
     }
   ],
   "non_consensus_highlights": []
