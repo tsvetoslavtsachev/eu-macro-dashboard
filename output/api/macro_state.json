@@ -1,7 +1,7 @@
 {
   "region": "EA",
   "as_of_date": "2026-06-05",
-  "generated_at": "2026-06-05T07:14:59.950175Z",
+  "generated_at": "2026-06-05T07:28:03.077011Z",
   "executive_summary": {
     "regime_key": "soft_landing",
     "regime_label_bg": "Soft landing",
@@ -86,10 +86,10 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 39.2,
-      "health_z": -0.441,
+      "score": 42.2,
+      "health_z": -0.314,
       "direction": "mixed",
-      "breadth_pct": 25.0,
+      "breadth_pct": 36.8,
       "anomalies_count": 3,
       "new_extreme_count": 2,
       "intra_divergences": [
