@@ -29,8 +29,10 @@ Phase 1.5: 36 confirmed серии (30 baseline + 6 нови от indicator revi
   - "labor"     — заетост, безработица, заплати
   - "inflation" — HICP, очаквания, PPI pipeline
   - "growth"    — IP, retail, GDP, sentiment
-  - "credit"    — CISS, sovereign spreads, M3, банков lending
-  - "ecb"       — ECB rates, balance sheet, TLTRO (нов lens, без US аналог)
+  - "credit"    — CISS, sovereign spreads, M3, банков lending, реална DFR, баланс
+  - "external"  — външен сектор: вход/ToT, преработка/марж, износ/баланс, REER
+                  (EA-специфична леща; замени бившата "ecb" — виж F-редизайн
+                  2026-06-05; момент-скоринг, чиста полярност, без обръщане)
 
 Source ID формати:
   ECB:      "<flowref>/<key>"  напр. "CISS/D.U2.Z0Z.4F.EC.SS_CIN.IDX"
@@ -56,8 +58,14 @@ from typing import Any
 
 ALLOWED_SOURCES = {"ecb", "eurostat", "oecd", "derived", "pending", "bloomberg_bridge"}
 ALLOWED_REGIONS = {"EA", "EU", "DE", "FR", "IT", "ES", "PT", "GR", "BE", "GLOBAL"}
-ALLOWED_LENSES = {"labor", "inflation", "growth", "credit", "ecb"}
+# F-teardown 2026-06-05: "ecb" леща РАЗГЛОБЕНА → заменена с "external".
+# real_dfr+balance_sheet → credit; суровите DFR/MRO/MLF/ESTR → lens=[]; OIS изтрити.
+ALLOWED_LENSES = {"labor", "inflation", "growth", "credit", "external"}
 ALLOWED_TRANSFORMS = {"level", "yoy_pct", "mom_pct", "qoq_pct", "z_score", "first_diff"}
+# scoring_mode (опционално поле; липсва → "level"):
+#   "level"    — робастен z спрямо 10-г. плъзгаща норма (ниво-vs-норма; default)
+#   "momentum" — робастен z на изгладения Δ (рязка промяна-vs-норма; external леща)
+ALLOWED_SCORING_MODES = {"level", "momentum"}
 ALLOWED_TAGS = {"non_consensus", "structural", "sovereign_stress"}
 ALLOWED_SCHEDULES = {"daily", "weekly", "monthly", "quarterly", "annually"}
 
@@ -917,16 +925,21 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
 
     # ════════════════════════════════════════════════════════
-    # ECB POLICY (4) — Rates + balance sheet
+    # ECB POLICY — F-teardown 2026-06-05 (бившата "ecb" леща)
     # ════════════════════════════════════════════════════════
+    # Само ЕДНА policy-ставка „от значение" се скорира — derived РЕАЛНА лихва
+    # (EA_REAL_DFR, в credit/policy_stance) — заради near-zero-MAD артефакта на
+    # номиналните стъпкови ставки (решение Цв., Fork #1). Суровите DFR/MRO/MLF/
+    # ESTR са lens=[] (chart/reference; DFR захранва real_dfr). balance_sheet →
+    # credit. EA_OIS_* изтрити (мъртви от 2021, EONIA→€STR преход).
     "ECB_DFR": {
         "source": "ecb",
         "id": "FM/D.U2.EUR.4F.KR.DFR.LEV",
         "region": "EA",
         "name_bg": "ЕЦБ — Лихва по депозитната улеснение (DFR)",
         "name_en": "ECB Deposit Facility Rate",
-        "lens": ["ecb"],
-        "peer_group": "policy_rates",
+        "lens": [],  # F-teardown #1: компонент за EA_REAL_DFR; chart/POLICY_RATE_KEY ref; НЕ се скорира пряко
+        "peer_group": "_components",
         "tags": [],
         "transform": "level",
         "is_rate": True,
@@ -943,8 +956,8 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "region": "EA",
         "name_bg": "ЕЦБ — Лихва по MRO операции",
         "name_en": "ECB Main Refinancing Operations Rate",
-        "lens": ["ecb"],
-        "peer_group": "policy_rates",
+        "lens": [],  # F-teardown #1: chart/reference only (колинеарен с DFR); НЕ се скорира
+        "peer_group": "_components",
         "tags": [],
         "transform": "level",
         "is_rate": True,
@@ -960,8 +973,8 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "region": "EA",
         "name_bg": "ЕЦБ — Лихва по marginal lending facility",
         "name_en": "ECB Marginal Lending Facility Rate",
-        "lens": ["ecb"],
-        "peer_group": "policy_rates",
+        "lens": [],  # F-teardown #1: chart/reference only (колинеарен с DFR); НЕ се скорира
+        "peer_group": "_components",
         "tags": [],
         "transform": "level",
         "is_rate": True,
@@ -977,8 +990,8 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "region": "EA",
         "name_bg": "ЕЦБ — общи активи (баланс)",
         "name_en": "ECB Total Assets (Balance Sheet)",
-        "lens": ["ecb"],
-        "peer_group": "balance_sheet",
+        "lens": ["credit"],  # F-teardown #1: баланс → credit (QE/QT = policy stance)
+        "peer_group": "policy_stance",
         "tags": [],
         "transform": "yoy_pct",
         "is_rate": True,
@@ -989,6 +1002,28 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "Sum total assets — отразява APP/PEPP покупки и TLTRO. "
                           "Trend (растеж/свиване) e key QE/QT signal.",
     },
+    "EA_REAL_DFR": {
+        "source": "derived",
+        "id": "ECB_DFR - EA_HICP_CORE",
+        "region": "EA",
+        "name_bg": "Реална лихва на ЕЦБ (DFR − базова HICP, pp)",
+        "name_en": "ECB Real Policy Rate (DFR − core HICP, pp)",
+        "lens": ["credit"],
+        "peer_group": "policy_stance",
+        "tags": [],
+        "transform": "level",
+        "scoring_mode": "level",
+        "is_rate": True,
+        "historical_start": "2001-12-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": False,
+        "narrative_hint": "Единствената policy-ставка от значение, скорирана в credit "
+                          "(Fork #1). Реалната лихва има вариация (за разлика от "
+                          "номиналния DFR — степенна функция, near-zero-MAD). По-висока "
+                          "реална лихва = по-стегнати финансови условия. Полярност −1. "
+                          "Derived = ECB_DFR (daily→monthly) − EA_HICP_CORE.",
+    },
 
     # ─── ECB additional rates: €STR (overnight benchmark) ───
     "ECB_ESTR": {
@@ -997,8 +1032,8 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "region": "EA",
         "name_bg": "€STR — Euro Short-Term Rate (overnight benchmark)",
         "name_en": "€STR (Euro Short-Term Rate, daily)",
-        "lens": ["ecb"],
-        "peer_group": "policy_rates",
+        "lens": [],  # F-teardown #1: chart/reference only (tracking-близо до DFR); НЕ се скорира
+        "peer_group": "_components",
         "tags": [],
         "transform": "level",
         "is_rate": True,
@@ -1264,87 +1299,242 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "narrative_hint": "Core-but-not-DE. Captures France-specific stress (2024 budget crisis).",
     },
 
-    # ════════════════════════════════════════════════════════
-    # ECB OIS curve (forwards) — Bloomberg-bridge
-    # ════════════════════════════════════════════════════════
-    # OIS forwards дават implied DFR path — какво пазара очаква ECB да направи.
-    # Spot rates (€STR) идват от ECB SDW; forwards са Bloomberg-only practically.
+    # ─── EA_OIS_* (4 forwards) ИЗТРИТИ — F-teardown 2026-06-05.
+    #     Мъртви от 2021-12-31 (EONIA→€STR преход; bridge as_of се препечатва,
+    #     но данни не влизат). Implied policy path вече не се ползва в скоринга.
 
-    "EA_OIS_3M": {
-        "source": "bloomberg_bridge",
-        "id": "EA_OIS_3M",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_OIS_3M.parquet",
-        "license_class": "source_public",
+    # ════════════════════════════════════════════════════════
+    # EXTERNAL (нова EA-специфична леща) — външен сектор
+    # ════════════════════════════════════════════════════════
+    # Теза (Цв., F-редизайн 2026-06-05): ЕА = внос суровини/енергия →
+    # преработка → износ. 2022 енергиен шок = срив на този двигател.
+    # 3 компонента: ВХОД/ToT · ПРЕРАБОТКА/МАРЖ · ИЗНОС/БАЛАНС.
+    # scoring_mode="momentum" — скорира рязката ПРОМЯНА (изгладен Δ), НЕ
+    # ниво-vs-екстремуми → лови шока + заобикаля magnitude артефакта.
+    # Чиста полярност (високо=зелено, без обръщане). TTF газ е ИЗВЪН pipeline
+    # (ръчен event-check; Цв. има TradingView). Всички кодове verified живо
+    # 2026-06-05 (Eurostat/ECB, безплатно, месечно, дълбока история, свежо).
+    # ВНИМАНИЕ: sts_inpi_m измерението е cpa2_1 (не nace_r2), indic_bt=PRC_IMP;
+    # ext_st_easitc НЕ приема geo филтър (EA имплицитно, селекторът е partner).
+
+    # ─── Вход / Terms-of-Trade (input_costs) — шокът влиза оттук ───
+    "EA_IMPORT_PRICE_TOTAL": {
+        "source": "eurostat",
+        "id": "sts_inpi_m?geo=EA20&indic_bt=PRC_IMP&cpa2_1=CPA_B-D&s_adj=NSA&unit=I21",
         "region": "EA",
-        "name_bg": "EA 3M OIS forward (implied €STR 3m)",
-        "name_en": "EUR 3M OIS Forward (€STR-linked, EUSWE3 BGN)",
-        "lens": ["ecb"],
-        "peer_group": "ois_curve",
+        "name_bg": "Импортни цени — общо (B-D, индекс 2021=100)",
+        "name_en": "Import Prices — Total (CPA B-D, index 2021=100)",
+        "lens": ["external"],
+        "peer_group": "input_costs",
         "tags": [],
-        "transform": "level",
+        "transform": "yoy_pct",
+        "scoring_mode": "momentum",
         "is_rate": True,
-        "historical_start": "2019-10-02",
-        "release_schedule": "daily",
-        "typical_release": "daily_close",
-        "revision_prone": False,
-        "narrative_hint": "Short-horizon implied ECB DFR. Reaction function в action.",
+        "historical_start": "2005-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
+        "revision_prone": True,
+        "narrative_hint": "Входната цена на вносните суровини/стоки. Рязко ускорение "
+                          "(2022 енергиен шок) = удар по преработващия двигател. "
+                          "Полярност −1: по-висок темп на разходите = по-нездраво.",
     },
-    "EA_OIS_1Y": {
-        "source": "bloomberg_bridge",
-        "id": "EA_OIS_1Y",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_OIS_1Y.parquet",
-        "license_class": "source_public",
+    "EA_IMPORT_PRICE_ENERGY": {
+        "source": "eurostat",
+        "id": "sts_inpi_m?geo=EA20&indic_bt=PRC_IMP&cpa2_1=CPA_MIG_NRG_X_E&s_adj=NSA&unit=I21",
         "region": "EA",
-        "name_bg": "EA 1Y OIS forward (implied 1y average DFR)",
-        "name_en": "EUR 1Y OIS Forward (EUSWE1 BGN)",
-        "lens": ["ecb"],
-        "peer_group": "ois_curve",
+        "name_bg": "Импортни цени — енергия (индекс 2021=100)",
+        "name_en": "Import Prices — Energy (CPA MIG NRG, index 2021=100)",
+        "lens": ["external"],
+        "peer_group": "input_costs",
         "tags": [],
-        "transform": "level",
+        "transform": "yoy_pct",
+        "scoring_mode": "momentum",
         "is_rate": True,
-        "historical_start": "2019-10-02",
-        "release_schedule": "daily",
-        "typical_release": "daily_close",
-        "revision_prone": False,
-        "narrative_hint": "1y implied policy path.",
+        "historical_start": "2005-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
+        "revision_prone": True,
+        "narrative_hint": "Шок-сензорът: вносната енергия е първопричината за 2022 "
+                          "срива. Най-волатилният компонент на входните разходи. "
+                          "Полярност −1.",
     },
-    "EA_OIS_2Y": {
-        "source": "bloomberg_bridge",
-        "id": "EA_OIS_2Y",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_OIS_2Y.parquet",
-        "license_class": "source_public",
+    "EA_IMPORT_PRICE_INTERMED": {
+        "source": "eurostat",
+        "id": "sts_inpi_m?geo=EA20&indic_bt=PRC_IMP&cpa2_1=CPA_MIG_ING&s_adj=NSA&unit=I21",
         "region": "EA",
-        "name_bg": "EA 2Y OIS forward",
-        "name_en": "EUR 2Y OIS Forward (EUSWE2 BGN)",
-        "lens": ["ecb"],
-        "peer_group": "ois_curve",
+        "name_bg": "Импортни цени — междинни стоки (индекс 2021=100)",
+        "name_en": "Import Prices — Intermediate (CPA MIG ING, index 2021=100)",
+        "lens": ["external"],
+        "peer_group": "input_costs",
         "tags": [],
-        "transform": "level",
+        "transform": "yoy_pct",
+        "scoring_mode": "momentum",
         "is_rate": True,
-        "historical_start": "2019-10-02",
-        "release_schedule": "daily",
-        "typical_release": "daily_close",
-        "revision_prone": False,
-        "narrative_hint": "Medium-horizon policy expectations.",
+        "historical_start": "2005-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
+        "revision_prone": True,
+        "narrative_hint": "Вносни междинни стоки — pipeline разходи към преработката. "
+                          "Полярност −1.",
     },
-    "EA_OIS_5Y": {
-        "source": "bloomberg_bridge",
-        "id": "EA_OIS_5Y",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_OIS_5Y.parquet",
-        "license_class": "source_public",
+
+    # ─── Преработка / марж (processing) — derived, резолват се в стъпка 4 ───
+    "EA_MARGIN": {
+        "source": "derived",
+        "id": "EA_PPI_OUTPUT - EA_IMPORT_PRICE_TOTAL",
         "region": "EA",
-        "name_bg": "EA 5Y OIS forward",
-        "name_en": "EUR 5Y OIS Forward (EUSWE5 BGN)",
-        "lens": ["ecb"],
-        "peer_group": "ois_curve",
+        "name_bg": "Преработвателен марж (output PPI − импортни цени, индекс пункта)",
+        "name_en": "Processing Margin (output PPI − import prices, index pts)",
+        "lens": ["external"],
+        "peer_group": "processing",
         "tags": [],
         "transform": "level",
+        "scoring_mode": "momentum",
+        "is_rate": False,
+        "historical_start": "2005-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
+        "revision_prone": True,
+        "narrative_hint": "Спред output−input: разширяване = преработвателят прехвърля "
+                          "разходите и пази маржа; свиване = шокът смазва маржа (2022). "
+                          "Полярност +1. Derived от EA_PPI_OUTPUT и EA_IMPORT_PRICE_TOTAL.",
+    },
+    "EA_TOT_MONTHLY": {
+        "source": "derived",
+        "id": "EA_EXP_UV / EA_IMP_UV",
+        "region": "EA",
+        "name_bg": "Условия на търговия (месечни, expUV/impUV ×100)",
+        "name_en": "Terms of Trade (monthly, export/import unit values ×100)",
+        "lens": ["external"],
+        "peer_group": "processing",
+        "tags": [],
+        "transform": "level",
+        "scoring_mode": "momentum",
+        "is_rate": False,
+        "historical_start": "2002-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": True,
+        "narrative_hint": "Колко внос купува единица износ. Подобрение = ценова мощ "
+                          "навън; влошаване (2022) = повече ресурс изтича за същия внос. "
+                          "Полярност +1. Derived от EA_EXP_UV / EA_IMP_UV.",
+    },
+
+    # ─── Износ / баланс (external_balance) ───
+    "EA_TRADE_BALANCE": {
+        "source": "eurostat",
+        "id": "ext_st_easitc?stk_flow=BAL_RT&indic_et=TRD_VAL_SCA&partner=EXT_EA21&sitc06=TOTAL",
+        "region": "EA",
+        "name_bg": "Търговски баланс (стоки, извън-ЕА, M€, SCA)",
+        "name_en": "Trade Balance (goods, extra-EA, EUR mln, SCA)",
+        "lens": ["external"],
+        "peer_group": "external_balance",
+        "tags": [],
+        "transform": "level",
+        "scoring_mode": "momentum",
+        "is_rate": False,
+        "historical_start": "2002-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": True,
+        "narrative_hint": "Стоковият баланс с третите страни. Срив към дефицит (2022) = "
+                          "енергийната сметка изпреварва износа. Полярност +1.",
+    },
+    "EA_EXPORT_VOLUME": {
+        "source": "eurostat",
+        "id": "ext_st_easitc?stk_flow=EXP&indic_et=IVOL_SCA&partner=EXT_EA21&sitc06=TOTAL",
+        "region": "EA",
+        "name_bg": "Експортен обем (извън-ЕА, индекс, SCA)",
+        "name_en": "Export Volume (extra-EA, volume index, SCA)",
+        "lens": ["external"],
+        "peer_group": "external_balance",
+        "tags": [],
+        "transform": "yoy_pct",
+        "scoring_mode": "momentum",
         "is_rate": True,
-        "historical_start": "2019-10-02",
-        "release_schedule": "daily",
-        "typical_release": "daily_close",
+        "historical_start": "2002-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": True,
+        "narrative_hint": "Реален износ (обем, не стойност — изчиства ценовия ефект). "
+                          "Двигателят на ЕА растежа. Полярност +1.",
+    },
+    "EA_REER": {
+        "source": "ecb",
+        "id": "EXR/M.E03.EUR.ERC0.A",
+        "region": "EA",
+        "name_bg": "Реален ефективен валутен курс (broad, CPI-дефлиран)",
+        "name_en": "Real Effective Exchange Rate (broad EER, CPI-deflated)",
+        "lens": ["external"],
+        "peer_group": "external_balance",
+        "tags": [],
+        "transform": "yoy_pct",
+        "scoring_mode": "momentum",
+        "is_rate": True,
+        "historical_start": "1993-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
         "revision_prone": False,
-        "narrative_hint": "Long-horizon equilibrium rate proxy.",
+        "narrative_hint": "Конкурентоспособност на цените навън. Рязка апресиация = "
+                          "загуба на конкурентоспособност (по-скъп износ). Полярност −1 "
+                          "под момент: рязко поскъпване = по-нездраво.",
+    },
+
+    # ─── Компонентни серии (lens=[] → fetch-ват се, но НЕ се скорират пряко;
+    #     захранват derived EA_MARGIN / EA_TOT_MONTHLY в стъпка 4) ───
+    "EA_PPI_OUTPUT": {
+        "source": "eurostat",
+        "id": "sts_inpp_m?geo=EA20&unit=I21&nace_r2=B-D&s_adj=NSA&indic_bt=PRC_PRR",
+        "region": "EA",
+        "name_bg": "Output PPI — общо (B-D, индекс 2021=100) [компонент за марж]",
+        "name_en": "Output PPI — Total (NACE B-D, index 2021=100) [margin component]",
+        "lens": [],
+        "peer_group": "_components",
+        "tags": [],
+        "transform": "level",
+        "is_rate": False,
+        "historical_start": "2000-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "first_week",
+        "revision_prone": True,
+        "narrative_hint": "Изходна цена на ЕА производителите. Само компонент за "
+                          "EA_MARGIN (output − input) — НЕ се скорира самостоятелно.",
+    },
+    "EA_EXP_UV": {
+        "source": "eurostat",
+        "id": "ext_st_easitc?stk_flow=EXP&indic_et=IVU&partner=EXT_EA21&sitc06=TOTAL",
+        "region": "EA",
+        "name_bg": "Експортна единична стойност (UV, индекс) [компонент за ToT]",
+        "name_en": "Export Unit Value (index) [ToT component]",
+        "lens": [],
+        "peer_group": "_components",
+        "tags": [],
+        "transform": "level",
+        "is_rate": False,
+        "historical_start": "2002-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": True,
+        "narrative_hint": "Цена за единица износ. Компонент за EA_TOT_MONTHLY "
+                          "(expUV/impUV) — НЕ се скорира самостоятелно.",
+    },
+    "EA_IMP_UV": {
+        "source": "eurostat",
+        "id": "ext_st_easitc?stk_flow=IMP&indic_et=IVU&partner=EXT_EA21&sitc06=TOTAL",
+        "region": "EA",
+        "name_bg": "Импортна единична стойност (UV, индекс) [компонент за ToT]",
+        "name_en": "Import Unit Value (index) [ToT component]",
+        "lens": [],
+        "peer_group": "_components",
+        "tags": [],
+        "transform": "level",
+        "is_rate": False,
+        "historical_start": "2002-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "mid_month",
+        "revision_prone": True,
+        "narrative_hint": "Цена за единица внос. Компонент за EA_TOT_MONTHLY "
+                          "(expUV/impUV) — НЕ се скорира самостоятелно.",
     },
 }
 
@@ -1436,6 +1626,8 @@ def validate_catalog() -> list[str]:
         for tag in meta["tags"]:
             if tag not in ALLOWED_TAGS:
                 errors.append(f"{key}: невалиден tag '{tag}'")
+        if "scoring_mode" in meta and meta["scoring_mode"] not in ALLOWED_SCORING_MODES:
+            errors.append(f"{key}: невалиден scoring_mode '{meta['scoring_mode']}'")
         if not isinstance(meta["revision_prone"], bool):
             errors.append(f"{key}: revision_prone трябва да е bool")
         if not isinstance(meta["is_rate"], bool):

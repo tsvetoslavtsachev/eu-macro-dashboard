@@ -155,6 +155,33 @@ def apply_transform(series: pd.Series, transform: str) -> pd.Series:
     return s  # level
 
 
+def momentum_signal(
+    series: pd.Series,
+    smooth: int = 3,
+    k: Optional[int] = None,
+) -> pd.Series:
+    """Изгладен Δ — сигналът за момент-скоринг (external леща, F-редизайн).
+
+    Скорира РЯЗКАТА ПРОМЯНА, не нивото: взима k-периодната промяна на изгладената
+    (smooth-периоден MA) серия. Подаваш ВЕЧЕ трансформираната серия (yoy_pct/level).
+
+    Защо така:
+      • Лови шока — рязко движение → голям Δ → силен |z| (след robust-z), независимо
+        от къде стои нивото (2022 енергиен скок се вижда веднага).
+      • Заобикаля magnitude/near-zero-MAD артефакта — z-ва се РАЗПРЕДЕЛЕНИЕТО НА
+        ПРОМЕНИТЕ (което има здрава вариация за тези серии), не степенно растящо ниво.
+
+    k=None → ~3 месеца по подразбиране (месечни=3, тримесечни=1).
+    """
+    s = series.dropna()
+    if s.empty:
+        return s
+    if k is None:
+        k = max(1, round(_infer_yoy_periods(s) / 4))  # ~3 месеца
+    sm = s.rolling(window=smooth, min_periods=1).mean()
+    return sm.diff(k).dropna()
+
+
 def robust_stats_latest(
     series: pd.Series,
     window_years: int = 10,

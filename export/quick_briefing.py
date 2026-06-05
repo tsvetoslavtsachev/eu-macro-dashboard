@@ -41,6 +41,7 @@ LENS_ICON = {
     "liquidity": "🏦",
     "housing": "🏗️",
     "credit": "💳",
+    "external": "🚢",
     "fed": "🏛",
     "consumer": "🛒",
 }
@@ -291,6 +292,7 @@ def _lens_readings(lens: str, snapshot: dict, top_n: int = 5) -> list[dict]:
                 s, name=meta.get("name_bg", key),
                 is_rate=bool(meta.get("is_rate", False)),
                 transform=transform, polarity=pol,
+                scoring_mode=meta.get("scoring_mode", "level"),
             )
         except Exception:
             continue

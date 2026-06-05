@@ -63,6 +63,25 @@ POLARITY: dict[str, Any] = {
     # CREDIT / sovereign_yields (в credit-здраве: по-високи = по-стегнато/стрес)
     "EA_BUND_10Y": -1, "EA_BUND_2Y": -1, "IT_10Y": -1, "FR_10Y": -1,
     "DE_10Y": -1, "ES_10Y": -1, "PT_10Y": -1, "GR_10Y": -1,
+    # CREDIT / policy_stance (F-teardown 2026-06-05)
+    "EA_REAL_DFR": -1,          # по-висока реална лихва = по-стегнато = по-нездраво
+    "ECB_BALANCE_SHEET": +1,    # разширяване (QE) = по-облекчено = по-здраво
+
+    # ════════════════════════════════════════════════════════
+    # EXTERNAL (нова леща, F-редизайн 2026-06-05) — чиста полярност
+    # под момент-скоринг (високо=зелено, без обръщане).
+    # ════════════════════════════════════════════════════════
+    # input_costs — по-висок темп на вносните разходи = по-нездраво
+    "EA_IMPORT_PRICE_TOTAL": -1,
+    "EA_IMPORT_PRICE_ENERGY": -1,
+    "EA_IMPORT_PRICE_INTERMED": -1,
+    # processing — разширяване на маржа/ToT = по-здраво
+    "EA_MARGIN": +1,
+    "EA_TOT_MONTHLY": +1,
+    # external_balance — по-силен баланс/износ = по-здраво; рязка апресиация = по-зле
+    "EA_TRADE_BALANCE": +1,
+    "EA_EXPORT_VOLUME": +1,
+    "EA_REER": -1,
 }
 
 # Multi-lens override: ценови очаквания в inflation лещата = U около норма (de-anchoring и в двете посоки)

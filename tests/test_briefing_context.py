@@ -153,7 +153,8 @@ def test_render_themes_uses_peer_group_tables(lens_reports):
     assert "Peer group" in text
     assert "breadth ↑" in text
     # И петте теми (harmonized labels — Phase 1; EU labels reflect real lens content)
-    for label in ["Пазар на труда", "Инфлация и цени", "Растеж и активност", "Финансови условия", "ЕЦБ"]:
+    # F-редизайн 2026-06-05: "ЕЦБ" лещата → "Външен сектор".
+    for label in ["Пазар на труда", "Инфлация и цени", "Растеж и активност", "Финансови условия", "Външен сектор"]:
         assert label in text
 
 

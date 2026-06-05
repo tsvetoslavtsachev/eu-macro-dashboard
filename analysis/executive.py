@@ -80,13 +80,13 @@ REGIME_CSS_CLASS = {
     "transition": "regime-trans",
 }
 
-LENS_ORDER = ("labor", "growth", "inflation", "credit", "ecb")
+LENS_ORDER = ("labor", "growth", "inflation", "credit", "external")
 LENS_LABEL_BG = {
     "labor":     "Пазар на труда",
     "growth":    "Растеж и активност",
     "inflation": "Инфлация и цени",
     "credit":    "Финансови условия, кредит и спредове",
-    "ecb":       "ЕЦБ — ставки и баланс",
+    "external":  "Външен сектор",
 }
 
 

@@ -59,14 +59,16 @@ ANALOG_HISTORY_START = "1999-01-01"     # historical analog window
 #   - inflation 0.30 — ЕЦБ има single mandate, инфлацията е dominant signal
 #   - labor 0.15    — EA labor markets лагират, по-малко leading
 #   - growth 0.20   — стандартна тежест
-#   - credit 0.20   — банково-доминирана икономика; CISS + sovereign spreads
-#   - ecb 0.15      — нов lens (rates, balance sheet, transmission)
+#   - credit 0.20   — банково-доминирана икономика; CISS + spreads + real_dfr/баланс
+#   - external 0.15 — F-редизайн 2026-06-05: външен сектор (вход/ToT, марж, износ);
+#                     замени бившата "ecb" леща. Момент-скоринг (шумен → засега 0.15,
+#                     финализиране по динамика — виж план стъпка 7).
 MODULE_WEIGHTS = {
     "inflation": 0.30,
     "labor":     0.15,
     "growth":    0.20,
     "credit":    0.20,
-    "ecb":       0.15,
+    "external":  0.15,
 }
 
 

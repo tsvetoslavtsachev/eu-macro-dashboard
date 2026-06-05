@@ -312,6 +312,7 @@ def cmd_briefing(args) -> int:
     from sources.eurostat_adapter import EurostatAdapter
     from export.weekly_briefing import generate_weekly_briefing
     from export.quick_briefing import generate_quick_briefing
+    from export.briefing_context import augment_snapshot_with_derived
 
     adapters = {"ecb": EcbAdapter(), "eurostat": EurostatAdapter()}
 
@@ -324,7 +325,9 @@ def cmd_briefing(args) -> int:
         print("⚠ Snapshot е празен. Стартирай `python run.py --status --refresh` първо.")
         return 1
 
-    print(f"\n📦 Snapshot: {len(snapshot)} серии заредени")
+    # Централен derived слой (Fork #2): марж/ToT/real_dfr + BTP/OAT spreads.
+    snapshot = augment_snapshot_with_derived(snapshot)
+    print(f"\n📦 Snapshot: {len(snapshot)} серии заредени (incl. derived)")
 
     analog_bundle = None
     if args.with_analogs:

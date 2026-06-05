@@ -93,10 +93,10 @@ CROSS_LENS_PAIRS: list[dict] = [
             "restrictive transmission = high score. Convergent both_up = transmission works."
         ),
         "slot_a": {
-            "lens": "ecb",
-            "peer_groups": ["policy_rates"],
+            "lens": "credit",  # F-teardown 2026-06-05: бившата "ecb" леща → credit
+            "peer_groups": ["policy_stance"],
             "invert": {},
-            "label": "Policy rates (DFR/MRO)",
+            "label": "Политика (реална лихва + баланс)",
         },
         "slot_b": {
             "lens": "credit",
@@ -139,10 +139,10 @@ CROSS_LENS_PAIRS: list[dict] = [
             "Hist precedent: 2011-2012 sovereign crisis."
         ),
         "slot_a": {
-            "lens": "ecb",
-            "peer_groups": ["policy_rates"],
+            "lens": "credit",  # F-teardown 2026-06-05: бившата "ecb" леща → credit
+            "peer_groups": ["policy_stance"],
             "invert": {},
-            "label": "Policy rates",
+            "label": "Политика (реална лихва + баланс)",
         },
         "slot_b": {
             "lens": "credit",

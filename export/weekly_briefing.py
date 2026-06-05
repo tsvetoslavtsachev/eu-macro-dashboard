@@ -31,17 +31,17 @@ from catalog.cross_lens_pairs import CROSS_LENS_PAIRS
 
 # ─── Labels (BG) ─────────────────────────────────────────────────
 
-LENS_ORDER = ["labor", "growth", "inflation", "credit", "ecb"]
+LENS_ORDER = ["labor", "growth", "inflation", "credit", "external"]
 LENS_LABEL_BG = {
     "labor":     "Пазар на труда",
     "growth":    "Растеж и активност",
     "inflation": "Инфлация и цени",
     "credit":    "Финансови условия, кредит и спредове",
-    "ecb":       "ЕЦБ — ставки и баланс",
+    "external":  "Външен сектор",
 }
 LENS_ICON = {
     "labor": "👷", "inflation": "🔥", "growth": "📈",
-    "credit": "🏛", "ecb": "🏦",
+    "credit": "🏛", "external": "🚢",
 }
 DIRECTION_LABEL_BG = {
     "expanding":         "разширяване",

@@ -43,7 +43,8 @@ BPS_PEER_GROUPS = {
     "core_measures",          # EA_HICP_CORE, EA_HICP_SERVICES (YoY %)
     "expectations",           # EA_SPF_HICP_LT (long-term inflation forecast %)
     # Rates
-    "policy_rates",           # ECB_DFR, ECB_MRO, ECB_MLF (%)
+    "policy_rates",           # (legacy) ECB nominal rates — вече _components
+    "policy_stance",          # EA_REAL_DFR (pp), ECB_BALANCE_SHEET (YoY %) — F-teardown
     "sovereign_yields",       # EA_BUND_10Y/2Y, IT_10Y, FR_10Y, DE_10Y (%)
     # Labor
     "unemployment",           # EA_UNRATE (%)
@@ -64,8 +65,9 @@ ABS_PEER_GROUPS = {
 }
 
 # Series-override: sid-level прецедент над peer_group default
-BPS_SIDS_OVERRIDE: set[str] = set()
-# Empty за v1; може да добавим ако някоя серия има non-standard peer
+# F-teardown 2026-06-05: суровите ЕЦБ номинални ставки са lens=[]/_components,
+# но си остават rate-ове (Δ в bps, не % change на лихва).
+BPS_SIDS_OVERRIDE: set[str] = {"ECB_DFR", "ECB_MRO", "ECB_MLF", "ECB_ESTR"}
 
 
 # Transform-ите които превръщат level в rate (delta of result е в bps)

@@ -63,14 +63,14 @@ from export.data_status import (
 
 HISTORY_YEARS = 5
 FACT_CARD_TAIL = 6
-LENS_ORDER = ["labor", "growth", "inflation", "credit", "ecb"]
+LENS_ORDER = ["labor", "growth", "inflation", "credit", "external"]
 
 LENS_LABEL_BG = {
     "labor":     "Пазар на труда",
     "growth":    "Растеж и активност",
     "inflation": "Инфлация и цени",
     "credit":    "Финансови условия, кредит и спредове",
-    "ecb":       "ЕЦБ — ставки и баланс",
+    "external":  "Външен сектор",
 }
 DIRECTION_LABEL_BG = {
     "expanding":         "разширяване",
@@ -93,23 +93,59 @@ STATE_LABEL_BG = {
 # ============================================================
 
 def augment_snapshot_with_derived(snapshot: dict[str, pd.Series]) -> dict[str, pd.Series]:
-    """Adds derived spread series — same logic като modules.credit без circular import."""
+    """Централен derived слой — резолва изчислимите серии в ЕДНО място (Fork #2,
+    F-редизайн 2026-06-05). Викан и от deployed пътя (cmd_briefing/quick + export_api),
+    не само от deep briefing-а. Всяка серия е guard-ната независимо.
+
+    Резолва:
+      • EA_BTP_BUND_SPREAD, EA_OAT_BUND_SPREAD — sovereign spreads (credit)
+      • EA_MARGIN — преработвателен марж = output PPI − импортни цени (external)
+      • EA_TOT_MONTHLY — месечни условия на търговия = expUV/impUV ×100 (external)
+      • EA_REAL_DFR — реална лихва = DFR(месечно) − базова HICP (credit)
+    """
     augmented = dict(snapshot)
-    de = augmented.get("DE_10Y")
-    if de is None or de.empty:
-        return augmented
 
-    it = augmented.get("IT_10Y")
-    if it is not None and not it.empty:
-        spread = (it - de).dropna()
-        if not spread.empty:
-            augmented["EA_BTP_BUND_SPREAD"] = spread
+    def _clean(s):
+        return s.dropna() if s is not None else None
 
-    fr = augmented.get("FR_10Y")
-    if fr is not None and not fr.empty:
-        spread = (fr - de).dropna()
-        if not spread.empty:
-            augmented["EA_OAT_BUND_SPREAD"] = spread
+    # ── Sovereign spreads (BTP-Bund, OAT-Bund) ──
+    de = _clean(augmented.get("DE_10Y"))
+    if de is not None and not de.empty:
+        it = _clean(augmented.get("IT_10Y"))
+        if it is not None and not it.empty:
+            spread = (it - de).dropna()
+            if not spread.empty:
+                augmented["EA_BTP_BUND_SPREAD"] = spread
+        fr = _clean(augmented.get("FR_10Y"))
+        if fr is not None and not fr.empty:
+            spread = (fr - de).dropna()
+            if not spread.empty:
+                augmented["EA_OAT_BUND_SPREAD"] = spread
+
+    # ── External: преработвателен марж (output PPI − импортни цени, index пункта) ──
+    ppi = _clean(augmented.get("EA_PPI_OUTPUT"))
+    imp = _clean(augmented.get("EA_IMPORT_PRICE_TOTAL"))
+    if ppi is not None and not ppi.empty and imp is not None and not imp.empty:
+        margin = (ppi - imp).dropna()
+        if not margin.empty:
+            augmented["EA_MARGIN"] = margin
+
+    # ── External: месечни условия на търговия (expUV/impUV ×100) ──
+    exp_uv = _clean(augmented.get("EA_EXP_UV"))
+    imp_uv = _clean(augmented.get("EA_IMP_UV"))
+    if exp_uv is not None and not exp_uv.empty and imp_uv is not None and not imp_uv.empty:
+        tot = (exp_uv / imp_uv * 100.0).replace([np.inf, -np.inf], np.nan).dropna()
+        if not tot.empty:
+            augmented["EA_TOT_MONTHLY"] = tot
+
+    # ── Credit: реална лихва на ЕЦБ (DFR месечно − базова HICP, pp) ──
+    dfr = _clean(augmented.get("ECB_DFR"))
+    core = _clean(augmented.get("EA_HICP_CORE"))
+    if dfr is not None and not dfr.empty and core is not None and not core.empty:
+        dfr_m = dfr.resample("MS").last() if isinstance(dfr.index, pd.DatetimeIndex) else dfr
+        real = (dfr_m - core).dropna()
+        if not real.empty:
+            augmented["EA_REAL_DFR"] = real
 
     return augmented
 

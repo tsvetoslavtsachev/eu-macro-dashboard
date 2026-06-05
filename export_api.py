@@ -46,7 +46,7 @@ from analysis.executive import compute_executive_summary
 
 # ── константи ───────────────────────────────────────────────────────────────
 OUTPUT_DIR = BASE_DIR / "output" / "api"
-LENSES = ["labor", "growth", "inflation", "credit"]
+LENSES = ["labor", "growth", "inflation", "credit", "external"]
 
 # Кои серии да включим в series_data.json (ключови за графиките)
 CHART_SERIES = {
@@ -70,10 +70,15 @@ CHART_SERIES = {
     "credit": [
         "EA_CISS", "EA_M3_YOY", "EA_BANK_LOANS_NFC", "EA_BANK_LOANS_HH",
         "EA_BTP_BUND_SPREAD", "EA_OAT_BUND_SPREAD",
-    ],
-    "ecb": [
-        "ECB_DFR", "ECB_MRO", "ECB_MLF", "ECB_BALANCE_SHEET",
+        "EA_REAL_DFR", "ECB_BALANCE_SHEET", "ECB_DFR",
         "EA_BUND_10Y", "EA_BUND_2Y",
+    ],
+    # F-teardown 2026-06-05: бившата "ecb" chart-група → "external" леща.
+    # Derived (EA_MARGIN/EA_TOT_MONTHLY) се появяват след augment (Fork #2).
+    "external": [
+        "EA_IMPORT_PRICE_TOTAL", "EA_IMPORT_PRICE_ENERGY", "EA_IMPORT_PRICE_INTERMED",
+        "EA_MARGIN", "EA_TOT_MONTHLY",
+        "EA_TRADE_BALANCE", "EA_EXPORT_VOLUME", "EA_REER",
     ],
 }
 
@@ -345,6 +350,7 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
             is_rate=bool(meta.get("is_rate", False)),
             transform=transform,
             polarity=polarity_for(series_id, primary_lens),
+            scoring_mode=meta.get("scoring_mode", "level"),
         )
 
         series_out[series_id] = {
@@ -411,7 +417,10 @@ def main(args) -> None:
         print()
 
     snapshot = _build_snapshot(adapters, force=False)
-    print(f"Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни\n")
+    # Централен derived слой (Fork #2): марж/ToT/real_dfr + BTP/OAT spreads → quick+API.
+    from export.briefing_context import augment_snapshot_with_derived
+    snapshot = augment_snapshot_with_derived(snapshot)
+    print(f"Snapshot: {len(snapshot)}/{len(SERIES_CATALOG)} серии с данни (incl. derived)\n")
 
     if len(snapshot) < 5:
         print("Твърде малко серии в snapshot — вероятно cache е празен.")

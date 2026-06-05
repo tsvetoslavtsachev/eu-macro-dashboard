@@ -30,7 +30,7 @@ from typing import Any, Optional
 import numpy as np
 import pandas as pd
 
-from core.primitives import apply_transform, robust_stats_latest, _infer_yoy_periods
+from core.primitives import apply_transform, robust_stats_latest, _infer_yoy_periods, momentum_signal
 
 # ── константи (синхронни с analysis/health.py + catalog/polarity.py) ──────────
 TANH_SLOPE = 2.0       # score = 50·(1+tanh(z_h/SLOPE)); ±2σ ≈ 88/12
@@ -136,6 +136,7 @@ def score_series(
     *,
     transform: str = "level",
     polarity: Any = None,
+    scoring_mode: str = "level",
     window_years: int = WINDOW_YEARS,
     min_obs: int = MIN_OBS,
 ) -> dict:
@@ -147,6 +148,8 @@ def score_series(
         is_rate: True ако стойността вече е в % (rate/YoY) → yoy_change като pp delta.
         transform: каталожна трансформация (yoy_pct/level/...) — прилага се ПРЕДИ scoring.
         polarity: +1 / −1 / ("U","self") / ("U","target",X). None → от invert.
+        scoring_mode: "level" (default — ниво-vs-10г-норма) или "momentum" (external
+            леща — робастен z на изгладения Δ; скорира рязката промяна, не нивото).
 
     score 50 = близката норма; >50 по-здраво, <50 по-зле (полярностно ориентирано).
     """
@@ -175,11 +178,15 @@ def score_series(
         else str(series.index[-1].date())
     )
 
-    # Робастна норма спрямо плъзгащ прозорец; fallback → пълна трансф. история
-    stats = robust_stats_latest(transformed, window_years=window_years, min_obs=min_obs)
+    # Базис за робастната норма: момент (изгладен Δ) за external леща, иначе нивото.
+    # Дисплеят (scored_val/percentile) си остава трансформираната серия и в двата режима.
+    score_basis = momentum_signal(transformed) if scoring_mode == "momentum" else transformed
+
+    # Робастна норма спрямо плъзгащ прозорец; fallback → пълна история на базиса
+    stats = robust_stats_latest(score_basis, window_years=window_years, min_obs=min_obs)
     used_window = window_years
     if stats is None:
-        stats = robust_stats_latest(transformed, window_years=200, min_obs=12)
+        stats = robust_stats_latest(score_basis, window_years=200, min_obs=12)
         used_window = 200
 
     if stats is None:  # твърде къса дори за fallback → неутрално
@@ -215,6 +222,7 @@ def score_series(
         "yoy_change": yoy,
         "yoy_unit": yoy_unit,
         "transform": transform,
+        "scoring_mode": scoring_mode,
         "polarity": _polarity_repr(polarity),
         "direction": direction,
         "invert": invert,
