@@ -1,16 +1,16 @@
 {
   "region": "EA",
-  "as_of_date": "2026-06-04",
-  "generated_at": "2026-06-04T20:57:21.844465Z",
+  "as_of_date": "2026-06-05",
+  "generated_at": "2026-06-05T07:03:42.748081Z",
   "executive_summary": {
     "regime_key": "soft_landing",
     "regime_label_bg": "Soft landing",
     "css_class": "regime-soft",
-    "narrative": "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията се охлажда. Fed credibility за момента издържа. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 100% (разширяване), 3 аномалии, 2 нови екстремума. За наблюдение следващия релиз: FR_10Y (нови 5-годишни екстремуми).",
+    "narrative": "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията се охлажда. Fed credibility за момента издържа. Най-отклонена леща: Инфлация и цени — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение: ECB_DFR (z=+6.00) — най-силното отклонение.",
     "supporting_signals": [
       "Най-силна аномалия: ECB_DFR z=+6.00",
-      "2 нови екстремуми в top-6 (lookback 5г.)",
-      "Активни двойки: Stagflation test=a_up_b_down; ecb_transmission=both_down"
+      "2 нови екстремуми в top-8 (lookback 5г.)",
+      "Активни двойки: Stagflation test=a_up_b_down; ecb_transmission=a_up_b_down; fragmentation_risk=a_up_b_down"
     ],
     "primary_driver": "stagflation_test"
   },
@@ -86,27 +86,106 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 40.2,
-      "health_z": -0.398,
+      "score": 39.2,
+      "health_z": -0.441,
       "direction": "mixed",
       "breadth_pct": 25.0,
       "anomalies_count": 3,
       "new_extreme_count": 2,
-      "intra_divergences": []
+      "intra_divergences": [
+        {
+          "lens": "credit",
+          "group_a": "bank_lending",
+          "group_b": "sovereign_spreads",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "bank_lending е по-силна (100%) отколкото sovereign_spreads (0%) — разминаване +100%.",
+          "name_bg": "bank_lending vs sovereign_spreads",
+          "pair_id": "credit__bank_lending__vs__sovereign_spreads",
+          "slot_a_label": "bank_lending",
+          "slot_b_label": "sovereign_spreads",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "credit",
+          "group_a": "policy_stance",
+          "group_b": "sovereign_spreads",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "policy_stance е по-силна (100%) отколкото sovereign_spreads (0%) — разминаване +100%.",
+          "name_bg": "policy_stance vs sovereign_spreads",
+          "pair_id": "credit__policy_stance__vs__sovereign_spreads",
+          "slot_a_label": "policy_stance",
+          "slot_b_label": "sovereign_spreads",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "credit",
+          "group_a": "sovereign_spreads",
+          "group_b": "sovereign_yields",
+          "breadth_a": 0.0,
+          "breadth_b": 1.0,
+          "diff": -1.0,
+          "interpretation": "sovereign_yields е по-силна (100%) отколкото sovereign_spreads (0%) — разминаване +100%.",
+          "name_bg": "sovereign_spreads vs sovereign_yields",
+          "pair_id": "credit__sovereign_spreads__vs__sovereign_yields",
+          "slot_a_label": "sovereign_spreads",
+          "slot_b_label": "sovereign_yields",
+          "state": "a_down_b_up"
+        }
+      ]
+    },
+    "external": {
+      "score": 28.5,
+      "health_z": -0.92,
+      "direction": "contracting",
+      "breadth_pct": 25.0,
+      "anomalies_count": 0,
+      "new_extreme_count": 0,
+      "intra_divergences": [
+        {
+          "lens": "external",
+          "group_a": "input_costs",
+          "group_b": "processing",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "input_costs е по-силна (100%) отколкото processing (0%) — разминаване +100%.",
+          "name_bg": "input_costs vs processing",
+          "pair_id": "external__input_costs__vs__processing",
+          "slot_a_label": "input_costs",
+          "slot_b_label": "processing",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "external",
+          "group_a": "external_balance",
+          "group_b": "input_costs",
+          "breadth_a": 0.333,
+          "breadth_b": 1.0,
+          "diff": -0.667,
+          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (33%) — разминаване +67%.",
+          "name_bg": "external_balance vs input_costs",
+          "pair_id": "external__external_balance__vs__input_costs",
+          "slot_a_label": "external_balance",
+          "slot_b_label": "input_costs",
+          "state": "a_down_b_up"
+        }
+      ]
     }
   },
   "top_anomalies": [
     {
       "series_id": "ECB_DFR",
       "name_bg": "ЕЦБ — Лихва по депозитната улеснение (DFR)",
-      "lens": [
-        "ecb"
-      ],
-      "peer_group": "policy_rates",
+      "lens": [],
+      "peer_group": "_components",
       "z_score": 6.0,
       "direction": "up",
       "current_value": 2.0,
-      "last_date": "2026-06-04",
+      "last_date": "2026-06-05",
       "is_new_extreme": false,
       "new_extreme_direction": null,
       "narrative_hint": "Главната policy rate след 2014 (когато DFR стана binding). Replaces FEDFUNDS от US версията."
@@ -125,6 +204,19 @@
       "is_new_extreme": false,
       "new_extreme_direction": null,
       "narrative_hint": "EA-aggregate 2Y yield. Curve slope (10Y-2Y) проксира policy expectations и recession risk."
+    },
+    {
+      "series_id": "EA_PPI_OUTPUT",
+      "name_bg": "Output PPI — общо (B-D, индекс 2021=100) [компонент за марж]",
+      "lens": [],
+      "peer_group": "_components",
+      "z_score": 3.0,
+      "direction": "up",
+      "current_value": 125.3,
+      "last_date": "2026-04-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Изходна цена на ЕА производителите. Само компонент за EA_MARGIN (output − input) — НЕ се скорира самостоятелно."
     },
     {
       "series_id": "EA_SELLING_PRICE_EXP",
@@ -186,6 +278,19 @@
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Germany 10Y, Maastricht-criterion measure. Reference за BTP-Bund / OAT-Bund spread изчисления."
+    },
+    {
+      "series_id": "EA_EXP_UV",
+      "name_bg": "Експортна единична стойност (UV, индекс) [компонент за ToT]",
+      "lens": [],
+      "peer_group": "_components",
+      "z_score": 2.06,
+      "direction": "up",
+      "current_value": 129.8,
+      "last_date": "2026-02-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Цена за единица износ. Компонент за EA_TOT_MONTHLY (expUV/impUV) — НЕ се скорира самостоятелно."
     }
   ],
   "cross_lens_divergences": [
@@ -204,23 +309,23 @@
       "pair_id": "ecb_transmission",
       "name_bg": "Трансмисия на ЕЦБ политиката",
       "question_bg": "ЕЦБ hike-овете стигат ли до банковото кредитиране?",
-      "state": "both_down",
-      "interpretation": "Loose policy + експандиращо лендиране — стимулираща среда (2015-2019 NIRP epoch).",
-      "slot_a_label": "Policy rates (DFR/MRO)",
+      "state": "a_up_b_down",
+      "interpretation": "ECB hike-ва, но lending не се свива — transmission lag или счупен. Risk: real economy не отчита restrictive stance.",
+      "slot_a_label": "Политика (реална лихва + баланс)",
       "slot_b_label": "Банково кредитиране (свиване)",
-      "breadth_a": 0.0,
+      "breadth_a": 1.0,
       "breadth_b": 0.0
     },
     {
       "pair_id": "fragmentation_risk",
       "name_bg": "Фрагментационен риск",
       "question_bg": "ЕЦБ hike-овете разширяват ли периферните spreads?",
-      "state": "insufficient_data",
-      "interpretation": "Insufficient data в една от двете групи.",
-      "slot_a_label": "Policy rates",
+      "state": "a_up_b_down",
+      "interpretation": "Hike-ове + сжимащи се spreads — smooth transmission, credible policy.",
+      "slot_a_label": "Политика (реална лихва + баланс)",
       "slot_b_label": "Sovereign spreads (BTP/OAT-Bund)",
-      "breadth_a": 0.0,
-      "breadth_b": null
+      "breadth_a": 1.0,
+      "breadth_b": 0.0
     },
     {
       "pair_id": "inflation_anchoring",
