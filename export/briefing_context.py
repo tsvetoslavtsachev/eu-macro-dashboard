@@ -342,9 +342,17 @@ def _render_cross_spreads(snapshot: dict[str, pd.Series], today: date, history_y
                     "workers losing (real wages contract)" if real < -0.3 else
                     "essentially flat — реално workers не печелят"
                 )
+                # #11: заплатата е ТРИМЕСЕЧНА (lag 1Q), HICP е МЕСЕЧЕН → разкриваме
+                # винтиджите, за да не чете разликата като синхронна (различни периоди).
+                wage_d = _last_obs_date(comp)
+                hicp_d = _last_obs_date(snapshot.get(CORE_DEFLATOR_KEY))
+                vint = (
+                    f" _(заплата към {wage_d:%Y-%m}, HICP към {hicp_d:%Y-%m})_"
+                    if wage_d and hicp_d else ""
+                )
                 parts.append(
                     f"| Real wages (compensation Q-o-Q ann.) | "
-                    f"{real:+.2f}% (nominal {comp_yoy:+.2f}% − HICP core {core_hicp_yoy:+.2f}%) | {interp} |"
+                    f"{real:+.2f}% (nominal {comp_yoy:+.2f}% − HICP core {core_hicp_yoy:+.2f}%){vint} | {interp} |"
                 )
 
         # Real DFR forward (ECB_DFR − SPF LT)
