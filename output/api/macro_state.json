@@ -1,12 +1,12 @@
 {
   "region": "EA",
-  "as_of_date": "2026-06-08",
-  "generated_at": "2026-06-08T17:26:15.402090Z",
+  "as_of_date": "2026-06-13",
+  "generated_at": "2026-06-13T10:13:35.179455Z",
   "executive_summary": {
     "regime_key": "soft_landing",
     "regime_label_bg": "Soft landing",
     "css_class": "regime-soft",
-    "narrative": "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията се охлажда. Fed credibility за момента издържа. Най-отклонена леща: Инфлация и цени — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
+    "narrative": "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията се охлажда. Fed credibility за момента издържа. Най-отклонена леща: Инфлация и цени — breadth 17% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение следващия релиз: DE_10Y, FR_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: EA_BUND_2Y z=+5.37",
       "2 нови екстремуми в top-5 (lookback 5г.)",
@@ -86,8 +86,8 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 42.3,
-      "health_z": -0.31,
+      "score": 42.7,
+      "health_z": -0.295,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -126,9 +126,9 @@
           "group_a": "sovereign_spreads",
           "group_b": "sovereign_yields",
           "breadth_a": 0.0,
-          "breadth_b": 1.0,
-          "diff": -1.0,
-          "interpretation": "sovereign_yields е по-силна (100%) отколкото sovereign_spreads (0%) — разминаване +100%.",
+          "breadth_b": 0.75,
+          "diff": -0.75,
+          "interpretation": "sovereign_yields е по-силна (75%) отколкото sovereign_spreads (0%) — разминаване +75%.",
           "name_bg": "sovereign_spreads vs sovereign_yields",
           "pair_id": "credit__sovereign_spreads__vs__sovereign_yields",
           "slot_a_label": "sovereign_spreads",
@@ -224,34 +224,34 @@
       "narrative_hint": "DG ECFIN survey: forward-looking labor сигнал от услугите (~70% от GDP). Дълга история (от 1996) — за разлика от teibs030 (EA_EMPLOYMENT_EXP, 12m). Същата полярност (higher=better). De-singleton-ва labor_sentiment."
     },
     {
-      "series_id": "FR_10Y",
-      "name_bg": "France 10Y government bond yield",
-      "lens": [
-        "credit"
-      ],
-      "peer_group": "sovereign_yields",
-      "z_score": 2.306,
-      "direction": "up",
-      "current_value": 3.73,
-      "last_date": "2026-04-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "max",
-      "narrative_hint": "France sovereign yield — компонент на OAT-Bund spread. Core-but-not-DE EA stress indicator."
-    },
-    {
       "series_id": "DE_10Y",
       "name_bg": "Germany 10Y Bund yield (Maastricht measure)",
       "lens": [
         "credit"
       ],
       "peer_group": "sovereign_yields",
-      "z_score": 2.234,
+      "z_score": 2.272,
       "direction": "up",
-      "current_value": 3.0,
-      "last_date": "2026-04-01",
+      "current_value": 3.045,
+      "last_date": "2026-05-01",
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Germany 10Y, Maastricht-criterion measure. Reference за BTP-Bund / OAT-Bund spread изчисления."
+    },
+    {
+      "series_id": "FR_10Y",
+      "name_bg": "France 10Y government bond yield",
+      "lens": [
+        "credit"
+      ],
+      "peer_group": "sovereign_yields",
+      "z_score": 2.246,
+      "direction": "up",
+      "current_value": 3.74,
+      "last_date": "2026-05-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "max",
+      "narrative_hint": "France sovereign yield — компонент на OAT-Bund spread. Core-but-not-DE EA stress indicator."
     }
   ],
   "cross_lens_divergences": [
