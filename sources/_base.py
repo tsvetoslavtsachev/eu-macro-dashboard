@@ -229,7 +229,7 @@ class BaseAdapter(ABC):
         force: bool = False,
     ) -> pd.Series:
         """Взима серия — от кеша или от remote, според TTL."""
-        if not force and self._is_cache_fresh(series_key, release_schedule):
+        if not force and self._is_cache_fresh(series_key, source_id, release_schedule):
             return self._series_from_cache(series_key)
 
         try:
@@ -315,12 +315,16 @@ class BaseAdapter(ABC):
     def find_stale_specs(self, specs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [
             s for s in specs
-            if not self._is_cache_fresh(s["key"], s.get("release_schedule", "monthly"))
+            if not self._is_cache_fresh(s["key"], s["source_id"], s.get("release_schedule", "monthly"))
         ]
 
-    def _is_cache_fresh(self, series_key: str, release_schedule: str) -> bool:
+    def _is_cache_fresh(self, series_key: str, source_id: str, release_schedule: str) -> bool:
         entry = self._cache.get(series_key)
         if entry is None or not entry.get("last_fetched"):
+            return False
+        # Смяна на source_id (нов API id/dataset) → кешираните данни са от СТАРИЯ
+        # източник, дори да са "fresh" по дата. Третирай като stale → форсирай re-fetch.
+        if entry.get("source_id") != source_id:
             return False
         try:
             last_fetched = datetime.fromisoformat(entry["last_fetched"])
