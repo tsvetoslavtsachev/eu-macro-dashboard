@@ -37,7 +37,7 @@ from sources import build_adapters
 from core.scorer import score_series
 from core.display import change_kind, compute_change
 from core.primitives import apply_transform
-from export.data_status import PERIOD_LENGTH_DAYS
+from export.data_status import PERIOD_LENGTH_DAYS, build_regime_snapshot
 from analysis.breadth import compute_lens_breadth
 from analysis.health import lens_health
 from analysis.divergence import compute_cross_lens_divergence, compute_intra_lens_divergence
@@ -148,22 +148,31 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
     """
     Изгражда macro_state.json — аналитичният слой.
     """
+    # ── Staleness gate за режимния път ──────────────────────────────────────
+    # Замръзнала серия (>3 периода зад най-свежата от същата каденция) не бива да
+    # гласува със стария си наклон в breadth → режим. Чистим snapshot-а ВЕДНЪЖ тук;
+    # дисплейният build_series_data остава върху пълния snapshot (флагва per-series).
+    regime_snapshot, stale_excluded = build_regime_snapshot(snapshot)
+    if stale_excluded:
+        print(f"  ⚠ {len(stale_excluded)} застояли серии изключени от режима: "
+              f"{', '.join(stale_excluded)}")
+
     print("  🧮 Изчислявам lens breadth...")
     lens_reports = {
-        lens: compute_lens_breadth(lens, snapshot)
+        lens: compute_lens_breadth(lens, regime_snapshot)
         for lens in LENSES
     }
 
     print("  🧮 Изчислявам cross-lens divergences...")
-    cross_report = compute_cross_lens_divergence(snapshot)
+    cross_report = compute_cross_lens_divergence(regime_snapshot)
 
     print("  🧮 Изчислявам anomalies...")
     anomaly_report = compute_anomalies(
-        snapshot, z_threshold=2.0, top_n=15, lookback_years=5
+        regime_snapshot, z_threshold=2.0, top_n=15, lookback_years=5
     )
 
     print("  🧮 Изчислявам non-consensus...")
-    nc_report = compute_non_consensus(snapshot)
+    nc_report = compute_non_consensus(regime_snapshot)
 
     print("  🧮 Изчислявам executive summary...")
     exec_summary = compute_executive_summary(
@@ -176,7 +185,7 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
     # ── Intra-lens divergences ──────────────────────────────────────────────
     intra_divs = {}
     for lens in LENSES:
-        report = compute_intra_lens_divergence(lens, snapshot)
+        report = compute_intra_lens_divergence(lens, regime_snapshot)
         intra_divs[lens] = []
         for d in report.divergences:
             base = d.to_dict()
@@ -206,7 +215,7 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
         exec_row = next(
             (r for r in exec_summary.lens_rows if r.lens == lens), None
         )
-        h = lens_health(lens, snapshot)
+        h = lens_health(lens, regime_snapshot)
         lenses_out[lens] = {
             "score": _clean(h["score"]),
             "health_z": _clean(h["health_z"]),
@@ -273,6 +282,8 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
             "narrative": exec_summary.narrative_bg,
             "supporting_signals": exec_summary.supporting_signals,
             "primary_driver": exec_summary.primary_driver,
+            "stale_excluded_count": len(stale_excluded),
+            "stale_excluded_keys": stale_excluded,
         },
         "lenses": lenses_out,
         "top_anomalies": top_anomalies,
