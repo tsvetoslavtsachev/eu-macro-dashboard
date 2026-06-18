@@ -41,8 +41,17 @@ Source ID формати:
   Derived:  "<expression>"  напр. "IT_10Y - DE_10Y"
 
 ВАЖНО: Eurostat geo кодът варира по dataset. EA21 (текущ Euro Area от 2026)
-работи за `une_rt_m`, `sts_inpr_m`, но не за `prc_hicp_manr` — там ползваме
-`EA` (auto-shifting aggregate). Винаги test-вай преди да добавиш серия.
+работи за `une_rt_m`, `sts_inpr_m`, но за HICP ползваме `EA` (auto-shifting
+aggregate — непрекъсната история, BG влиза от 2026-01). Винаги test-вай преди
+да добавиш серия.
+
+ВАЖНО (HICP миграция, 2026-06-18, INIT-22 S14 5B): Eurostat спря старите
+`prc_hicp_manr/midx/mmor` (последна промяна 2026-02-06, данни до 2025-12) и
+премести HICP в `prc_hicp_minr` (ECOICOP ver.2, база 2025=100). Новата структура:
+dims = freq, unit, coicop18, geo, time. `unit=RCH_A` (annual rate) остава валиден;
+`coicop` → `coicop18`. Кодовете на агрегатите са същите ОСВЕН headline:
+CP00 → TOTAL. Останалите (TOT_X_NRG_FOOD, SERV, NRG, FOOD) са непроменени.
+Overlap старо↔ново за 2025 е точен (RCH_A = YoY, base-year-независим).
 
 is_rate field semantics:
   - True: values (post-transform) са rate / percentage. YoY display ползва pp delta.
@@ -240,7 +249,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     # ════════════════════════════════════════════════════════
     "EA_HICP_HEADLINE": {
         "source": "eurostat",
-        "id": "prc_hicp_manr?geo=EA&unit=RCH_A&coicop=CP00",
+        "id": "prc_hicp_minr?geo=EA&unit=RCH_A&coicop18=TOTAL",
         "region": "EA",
         "name_bg": "HICP — всички продукти, YoY",
         "name_en": "HICP All Items, YoY",
@@ -257,7 +266,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
     "EA_HICP_CORE": {
         "source": "eurostat",
-        "id": "prc_hicp_manr?geo=EA&unit=RCH_A&coicop=TOT_X_NRG_FOOD",
+        "id": "prc_hicp_minr?geo=EA&unit=RCH_A&coicop18=TOT_X_NRG_FOOD",
         "region": "EA",
         "name_bg": "HICP базова инфлация (excl. енергия и храни), YoY",
         "name_en": "HICP Core (excl. energy and food), YoY",
@@ -275,7 +284,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
     "EA_HICP_SERVICES": {
         "source": "eurostat",
-        "id": "prc_hicp_manr?geo=EA&unit=RCH_A&coicop=SERV",
+        "id": "prc_hicp_minr?geo=EA&unit=RCH_A&coicop18=SERV",
         "region": "EA",
         "name_bg": "HICP услуги, YoY",
         "name_en": "HICP Services, YoY",
@@ -293,7 +302,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
     "EA_HICP_ENERGY": {
         "source": "eurostat",
-        "id": "prc_hicp_manr?geo=EA&unit=RCH_A&coicop=NRG",
+        "id": "prc_hicp_minr?geo=EA&unit=RCH_A&coicop18=NRG",
         "region": "EA",
         "name_bg": "HICP енергия, YoY",
         "name_en": "HICP Energy, YoY",
@@ -311,7 +320,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
     "EA_HICP_FOOD": {
         "source": "eurostat",
-        "id": "prc_hicp_manr?geo=EA&unit=RCH_A&coicop=FOOD",
+        "id": "prc_hicp_minr?geo=EA&unit=RCH_A&coicop18=FOOD",
         "region": "EA",
         "name_bg": "HICP храни, YoY",
         "name_en": "HICP Food, YoY",
