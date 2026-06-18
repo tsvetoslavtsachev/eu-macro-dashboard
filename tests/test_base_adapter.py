@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -103,7 +104,46 @@ def test_base_adapter_fresh_within_ttl(tmp_path):
     series = pd.Series([1.0], index=pd.date_range("2024-01-01", periods=1, freq="MS"))
     a = _StubAdapter(cache_path="c.json", base_dir=tmp_path, fetch_response=series, retry_backoff=[])
     a.fetch("KEY", "id", "monthly", force=True)
-    assert a._is_cache_fresh("KEY", "monthly")
+    assert a._is_cache_fresh("KEY", "id", "monthly")
+
+
+def test_is_cache_fresh_source_id_mismatch_is_stale(tmp_path):
+    """Смяна на source_id → кешът е от стария източник → НЕ е fresh (force re-fetch).
+
+    Регресия за латентния бъг, разкрит при HICP миграцията
+    (prc_hicp_manr → prc_hicp_minr): топъл кеш под старото id тихо сервираше
+    стари данни под новото id, докато TTL изтече.
+    """
+    series = pd.Series([1.0], index=pd.date_range("2024-01-01", periods=1, freq="MS"))
+    a = _StubAdapter(cache_path="c.json", base_dir=tmp_path, fetch_response=series, retry_backoff=[])
+    a.fetch("KEY", "old_dataset?foo=A", "monthly", force=True)
+
+    # Същото id + свежа дата → fresh (старата логика непокътната)
+    assert a._is_cache_fresh("KEY", "old_dataset?foo=A", "monthly") is True
+    # Различно id (миграция) + свежа дата → stale заради mismatch
+    assert a._is_cache_fresh("KEY", "new_dataset?foo=A", "monthly") is False
+
+
+def test_is_cache_fresh_same_id_expired_ttl_is_stale(tmp_path):
+    """Същото source_id, но изтекъл TTL → stale (date-based логика непокътната)."""
+    series = pd.Series([1.0], index=pd.date_range("2024-01-01", periods=1, freq="MS"))
+    a = _StubAdapter(cache_path="c.json", base_dir=tmp_path, fetch_response=series, retry_backoff=[])
+    a.fetch("KEY", "id", "monthly", force=True)
+    # Изкуствено състаряваме last_fetched отвъд monthly TTL (10 дни)
+    a._cache["KEY"]["last_fetched"] = (datetime.now() - timedelta(days=40)).isoformat()
+    assert a._is_cache_fresh("KEY", "id", "monthly") is False
+
+
+def test_find_stale_specs_flags_source_id_change(tmp_path):
+    """find_stale_specs маркира серия със сменен source_id като stale."""
+    series = pd.Series([1.0], index=pd.date_range("2024-01-01", periods=1, freq="MS"))
+    a = _StubAdapter(cache_path="c.json", base_dir=tmp_path, fetch_response=series, retry_backoff=[])
+    a.fetch("KEY", "old_dataset?foo=A", "monthly", force=True)
+
+    same = [{"key": "KEY", "source_id": "old_dataset?foo=A", "release_schedule": "monthly"}]
+    changed = [{"key": "KEY", "source_id": "new_dataset?foo=A", "release_schedule": "monthly"}]
+    assert a.find_stale_specs(same) == []
+    assert a.find_stale_specs(changed) == changed
 
 
 def test_base_adapter_falls_back_to_cache_on_error(tmp_path):
