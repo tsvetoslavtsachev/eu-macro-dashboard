@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-06-20",
-  "generated_at": "2026-06-20T10:18:29.895620Z",
+  "as_of_date": "2026-06-27",
+  "generated_at": "2026-06-27T09:37:52.401003Z",
   "executive_summary": {
     "regime_key": "stagflation_confirmed",
     "regime_label_bg": "Стагфлация (потвърдена)",
@@ -13,8 +13,14 @@
       "Активни двойки: Stagflation test=both_up"
     ],
     "primary_driver": "stagflation_test",
-    "stale_excluded_count": 0,
-    "stale_excluded_keys": []
+    "stale_excluded_count": 5,
+    "stale_excluded_keys": [
+      "EA_EXPORT_VOLUME",
+      "EA_EXP_UV",
+      "EA_IMP_UV",
+      "EA_PERMIT_DW",
+      "EA_TOT_MONTHLY"
+    ]
   },
   "lenses": {
     "labor": {
@@ -70,28 +76,13 @@
       ]
     },
     "growth": {
-      "score": 46.8,
-      "health_z": -0.129,
+      "score": 38.1,
+      "health_z": -0.486,
       "direction": "mixed",
-      "breadth_pct": 23.1,
+      "breadth_pct": 16.7,
       "anomalies_count": 1,
       "new_extreme_count": 0,
-      "intra_divergences": [
-        {
-          "lens": "growth",
-          "group_a": "country_leading",
-          "group_b": "hard_activity",
-          "breadth_a": 0.667,
-          "breadth_b": 0.25,
-          "diff": 0.417,
-          "interpretation": "country_leading е по-силна (67%) отколкото hard_activity (25%) — разминаване +42%.",
-          "name_bg": "country_leading vs hard_activity",
-          "pair_id": "growth__country_leading__vs__hard_activity",
-          "slot_a_label": "country_leading",
-          "slot_b_label": "hard_activity",
-          "state": "a_up_b_down"
-        }
-      ]
+      "intra_divergences": []
     },
     "inflation": {
       "score": 43.3,
@@ -118,8 +109,8 @@
       ]
     },
     "credit": {
-      "score": 44.8,
-      "health_z": -0.208,
+      "score": 44.7,
+      "health_z": -0.213,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -184,35 +175,21 @@
       ]
     },
     "external": {
-      "score": 23.3,
-      "health_z": -1.194,
+      "score": 19.8,
+      "health_z": -1.4,
       "direction": "contracting",
-      "breadth_pct": 12.5,
+      "breadth_pct": 16.7,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
         {
           "lens": "external",
-          "group_a": "input_costs",
-          "group_b": "processing",
-          "breadth_a": 1.0,
-          "breadth_b": 0.0,
-          "diff": 1.0,
-          "interpretation": "input_costs е по-силна (100%) отколкото processing (0%) — разминаване +100%.",
-          "name_bg": "input_costs vs processing",
-          "pair_id": "external__input_costs__vs__processing",
-          "slot_a_label": "input_costs",
-          "slot_b_label": "processing",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "external",
           "group_a": "external_balance",
           "group_b": "input_costs",
-          "breadth_a": 0.333,
+          "breadth_a": 0.5,
           "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (33%) — разминаване +67%.",
+          "diff": -0.5,
+          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (50%) — разминаване +50%.",
           "name_bg": "external_balance vs input_costs",
           "pair_id": "external__external_balance__vs__input_costs",
           "slot_a_label": "external_balance",
