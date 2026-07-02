@@ -358,7 +358,7 @@ _REGIME_OPENINGS = {
     ),
     "soft_landing": (
         "Конфигурацията подкрепя soft landing — labor остава tight, но инфлацията "
-        "се охлажда. Fed credibility за момента издържа."
+        "се охлажда. ЕЦБ credibility за момента издържа."
     ),
     "disinflation_cooling": (
         "Синхронно охлаждане — labor и инфлация отстъпват заедно. "
@@ -366,7 +366,7 @@ _REGIME_OPENINGS = {
     ),
     "policy_dilemma": (
         "Policy dilemma — labor market е loose, но инфлацията remains hot. "
-        "Fed е заклещен между двата мандата."
+        "ЕЦБ е заклещена между инфлацията и растежа."
     ),
     "expansion": (
         "Експанзионен режим — growth и labor сигналите сочат нагоре синхронно. "
@@ -378,7 +378,7 @@ _REGIME_OPENINGS = {
     ),
     "credit_stress": (
         "Кредитен стрес — spread-овете се разширяват въпреки policy easing. "
-        "Това е non-policy signal, не е резултат от Fed tightening."
+        "Това е non-policy signal, не е резултат от ЕЦБ tightening."
     ),
     "transition": (
         "Сигналите са в преход — няма доминираща конфигурация. "
@@ -452,7 +452,7 @@ def _find_counter_signal(regime_key: str, cross_report) -> Optional[str]:
     if regime_key in ("stagflation_confirmed", "policy_dilemma"):
         anchor = states.get("inflation_anchoring")
         if anchor == "a_up_b_down":
-            return "Обаче inflation expectations остават anchored — Fed narrative-ът за момента държи."
+            return "Обаче inflation expectations остават anchored — ЕЦБ narrative-ът за момента държи."
         if anchor == "both_up":
             return "Expectations също нагоре — de-anchoring в ход, рискът ескалира."
 
