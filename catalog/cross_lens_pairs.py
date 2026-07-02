@@ -304,6 +304,54 @@ CROSS_LENS_PAIRS: list[dict] = [
             "transition": "Sentiment turn обикновено leads hard data 3-6mo.",
         },
     },
+
+    # ─────────────────────────────────────────────────────────────
+    # 7. growth_labor_lead_lag (P3-fix-C D2, 03.07 — EU-native
+    #    fallback за expansion/slowdown; id-то съвпада с US, за да
+    #    остане executive waterfall-ът близнак)
+    # ─────────────────────────────────────────────────────────────
+    {
+        "id": "growth_labor_lead_lag",
+        "name_bg": "Растеж срещу труд (lead-lag)",
+        "question_bg": "Активността и пазарът на труда движат ли се заедно?",
+        "narrative": (
+            "Fallback диагностика за expansion/slowdown (executive waterfall). "
+            "Твърдата активност (IP, retail, GDP) ВОДИ; трудът е lagging — "
+            "безработицата обръща последна. EU-native замяна на US claims слота "
+            "(EU няма седмични claims): inverted unemployment + employment."
+        ),
+        "slot_a": {
+            "lens": "growth",
+            "peer_groups": ["hard_activity"],
+            "invert": {},
+            "label": "Твърда активност (IP, retail, GDP)",
+        },
+        "slot_b": {
+            "lens": "labor",
+            "peer_groups": ["unemployment", "employment"],
+            "invert": {"unemployment": True},
+            "label": "Пазар на труда (сила)",
+        },
+        "interpretations": {
+            "both_up": (
+                "Синхронна експанзия: активността расте и трудовият пазар се "
+                "засилва. Класическа expansion конфигурация."
+            ),
+            "both_down": (
+                "Синхронно забавяне: активността и трудът отслабват заедно. "
+                "Late-cycle — гледай дали инфлацията позволява отговор на ЕЦБ."
+            ),
+            "a_up_b_down": (
+                "Активността се ускорява при още слаб труд — ранна фаза на "
+                "възстановяване (трудът е lagging, обръща последен)."
+            ),
+            "a_down_b_up": (
+                "Активността се пречупва при още силен труд — късноциклично. "
+                "Трудът потвърждава последен; следи unemployment за обръщане."
+            ),
+            "transition": "Смесена картина — изчакай alignment на двата блока.",
+        },
+    },
 ]
 
 

@@ -44,6 +44,7 @@ from analysis.divergence import compute_cross_lens_divergence, compute_intra_len
 from analysis.anomaly import compute_anomalies
 from analysis.non_consensus import compute_non_consensus
 from analysis.executive import compute_executive_summary
+from analysis.delta import load_previous_published_regime
 
 # ── константи ───────────────────────────────────────────────────────────────
 OUTPUT_DIR = BASE_DIR / "output" / "api"
@@ -175,11 +176,15 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
     nc_report = compute_non_consensus(regime_snapshot)
 
     print("  🧮 Изчислявам executive summary...")
+    # P3-fix-C (D1): „индикиран/потвърден" се решава срещу последната ПУБЛИКУВАНА
+    # снимка (macro_state.json — комитва се от workflow-а → наличен и в CI).
+    # data/state/ е gitignored → невидим за CI; затова НЕ е източникът тук.
     exec_summary = compute_executive_summary(
         cross_report=cross_report,
         lens_reports=lens_reports,
         anomaly_report=anomaly_report,
         nc_report=nc_report,
+        previous_regime_key=load_previous_published_regime(),
     )
 
     # ── Intra-lens divergences ──────────────────────────────────────────────
@@ -287,6 +292,7 @@ def build_macro_state(snapshot: dict, today: date) -> dict:
             "narrative": exec_summary.narrative_bg,
             "supporting_signals": exec_summary.supporting_signals,
             "primary_driver": exec_summary.primary_driver,
+            "regime_confidence": exec_summary.regime_confidence,
             "stale_excluded_count": len(stale_excluded),
             "stale_excluded_keys": stale_excluded,
         },
@@ -394,13 +400,20 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
         # Единният health примитив — робастен z спрямо 10-г. плъзгаща норма върху
         # каталожно-трансформираната серия + полярност. score=50 е близката норма;
         # percentile е trailing-10г ранг (вече НЕ клони към 100 за растящите серии).
-        score_data = score_series(
-            raw_series, name=series_id,
-            is_rate=bool(meta.get("is_rate", False)),
-            transform=transform,
-            polarity=polarity_for(series_id, primary_lens),
-            scoring_mode=meta.get("scoring_mode", "level"),
-        )
+        # P3-fix-C (Q3, решение 03.07): lens=[] "_components" серии (строителни
+        # блокове за derived числа) нямат изрична полярност — score с default +1
+        # внушаваше посока („DFR по-високо = по-добре"). Остават като chart данни
+        # (value/dates/staleness), но без score/health полета.
+        if lens_list:
+            score_data = score_series(
+                raw_series, name=series_id,
+                is_rate=bool(meta.get("is_rate", False)),
+                transform=transform,
+                polarity=polarity_for(series_id, primary_lens),
+                scoring_mode=meta.get("scoring_mode", "level"),
+            )
+        else:
+            score_data = {}
 
         # Relative staleness (каденс-aware) — серия изостанала с месеци зад peer-ите
         # от същата каденция седи, но JSON-ът вече я флагва (уеб-таблото показва ⚠).

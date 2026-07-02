@@ -159,8 +159,9 @@ def test_render_executive_no_composite_scores(lens_reports, cross_report, anomal
 
 
 def test_render_cross_lens_pairs_has_six_cards(cross_report):
+    # P3-fix-C (D2): 7-ма двойка growth_labor_lead_lag (EU-native fallback)
     html = _render_cross_lens_pairs(cross_report)
-    assert html.count('class="pair-card"') == 6
+    assert html.count('class="pair-card"') == 7
     assert "Cross-Lens Divergence" in html
     assert "pair-state" in html
 
@@ -231,7 +232,8 @@ def test_generate_briefing_includes_us_style_sections(tmp_path, sample_snapshot)
     html = output.read_text(encoding="utf-8")
     assert 'class="kpi"' in html
     assert "regime-badge" in html
-    assert html.count('class="pair-card"') == 6
+    # P3-fix-C (D2): 7-ма двойка growth_labor_lead_lag (EU-native fallback)
+    assert html.count('class="pair-card"') == 7
     assert html.count('class="brief-section lens-block"') == 5
     assert 'class="breadth-table"' in html
 

@@ -153,11 +153,13 @@ def test_cross_lens_pairs_is_list():
 
 
 def test_cross_lens_pairs_phase_15_populated():
-    """Phase 1.5 populate-ва 6 EA-specific pairs."""
-    assert len(CROSS_LENS_PAIRS) == 6, f"expected 6 pairs, got {len(CROSS_LENS_PAIRS)}"
+    """Phase 1.5 populate-ва 6 EA-specific pairs; P3-fix-C (D2) добавя 7-мата —
+    growth_labor_lead_lag (EU-native fallback за expansion/slowdown)."""
+    assert len(CROSS_LENS_PAIRS) == 7, f"expected 7 pairs, got {len(CROSS_LENS_PAIRS)}"
     expected_ids = {
         "stagflation_test", "ecb_transmission", "fragmentation_risk",
         "inflation_anchoring", "pipeline_inflation", "sentiment_vs_hard_data",
+        "growth_labor_lead_lag",
     }
     actual_ids = {p["id"] for p in CROSS_LENS_PAIRS}
     assert actual_ids == expected_ids, f"missing/extra: {expected_ids ^ actual_ids}"
