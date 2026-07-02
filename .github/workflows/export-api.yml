@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run tests (gate)
+        run: python -m pytest tests -q -p no:cacheprovider
+
       - name: Export API JSON
         run: |
           if [ "${{ github.event.inputs.refresh }}" = "true" ] || [ "${{ github.event_name }}" = "schedule" ]; then
