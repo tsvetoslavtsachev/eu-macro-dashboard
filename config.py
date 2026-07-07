@@ -116,7 +116,8 @@ NOMINAL_SERIES_NEED_DEFLATION: list[str] = [
 ]
 
 # Cross-reference SIDs за derived computations.
-CORE_DEFLATOR_KEY = "EA_HICP_CORE"      # дефлатор за nominal → real conversion
+CORE_DEFLATOR_KEY = "EA_HICP_CORE"      # underlying inflation референция (не дефлатор за real-X)
+HEADLINE_DEFLATOR_KEY = "EA_HICP_HEADLINE"  # EU-1: дефлатор за покупателна способност (headline вкл. храна+енергия)
 POLICY_RATE_KEY = "ECB_DFR"             # binding policy rate (post-2014)
 FORWARD_INFL_KEY = "EA_SPF_HICP_LT"     # forward inflation expectation
 NOMINAL_10Y_KEY = "EA_BUND_10Y"         # nominal yield benchmark

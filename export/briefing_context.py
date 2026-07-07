@@ -42,6 +42,7 @@ from config import (
     ANCHORED_ZONES,
     NOMINAL_SERIES_NEED_DEFLATION,
     CORE_DEFLATOR_KEY,
+    HEADLINE_DEFLATOR_KEY,
     POLICY_RATE_KEY,
     FORWARD_INFL_KEY,
     NOMINAL_10Y_KEY,
@@ -61,7 +62,9 @@ from export.data_status import (
 # CONFIG
 # ============================================================
 
-HISTORY_YEARS = 5
+# EU-1 (О3): percentile канон за публикация 5г→10г — консистентно с core/scorer.py
+# WINDOW_YEARS=10 и us-macro П1а (207d7cf). Web (видим прозорец) НЕ се пипа.
+HISTORY_YEARS = 10
 FACT_CARD_TAIL = 6
 LENS_ORDER = ["labor", "growth", "inflation", "credit", "external"]
 
@@ -208,7 +211,7 @@ def _annualized_change(series: Optional[pd.Series], periods: int = 3) -> Optiona
     return float(((1 + cumulative) ** annualization_factor - 1) * 100)
 
 
-def _percentile_5y(series: Optional[pd.Series], history_years: int = 5) -> Optional[float]:
+def _percentile_5y(series: Optional[pd.Series], history_years: int = HISTORY_YEARS) -> Optional[float]:
     if series is None or series.empty:
         return None
     s = series.dropna().sort_index()
@@ -302,16 +305,24 @@ def _render_cross_spreads(snapshot: dict[str, pd.Series], today: date, history_y
     anchored band, PPI→CPI pipeline."""
     parts = ["## 1.5 Cross-spreads и реални нива", ""]
     parts.append(
-        "Производни числа за директно използване в теза. **Deflator: HICP Core** "
-        f"(`{CORE_DEFLATOR_KEY}` YoY) — ЕЦБ-preferred underlying inflation. "
-        f"**Real DFR forward** = `{POLICY_RATE_KEY}` − `{FORWARD_INFL_KEY}` "
-        "(ECB SPF long-term). Тези числа НЕ са в каталога — изчислени са тук от налични серии."
+        "Производни числа за директно използване в теза. **Deflator за покупателна "
+        f"способност: HICP headline** (`{HEADLINE_DEFLATOR_KEY}` YoY, вкл. храна+енергия) "
+        f"— EU-1: за real-volume/real-wage твърдения headline е коректният дефлатор; "
+        f"**HICP core** (`{CORE_DEFLATOR_KEY}`) е ЕЦБ-preferred underlying, но НЕ мери "
+        f"покупателна способност (остава референция). **Real DFR forward** = "
+        f"`{POLICY_RATE_KEY}` − `{FORWARD_INFL_KEY}` (ECB SPF long-term, breakeven-based "
+        "— непроменен). Тези числа НЕ са в каталога — изчислени са тук от налични серии."
     )
     parts.append("")
 
-    # ─── Core HICP YoY (deflator) ───
-    # EA_HICP_CORE has transform=level (RCH_A is already YoY%) → just take last value
+    # ─── Deflator за покупателна способност = HICP headline (EU-1) ───
+    # И двете серии са transform=level (RCH_A вече YoY%) → взимаме последната стойност.
+    # real-X ползва headline; core остава референтен ред. Ако headline липсва →
+    # fallback към core с явен флаг (никога тихо).
     core_hicp_yoy = _last_value(snapshot.get(CORE_DEFLATOR_KEY))
+    headline_hicp_yoy = _last_value(snapshot.get(HEADLINE_DEFLATOR_KEY))
+    deflator = headline_hicp_yoy if headline_hicp_yoy is not None else core_hicp_yoy
+    defl_short = "HICP headline" if headline_hicp_yoy is not None else "HICP core (⚠ headline липсва)"
 
     # ═══════════════════════════════════════
     # Реални нива
@@ -319,13 +330,16 @@ def _render_cross_spreads(snapshot: dict[str, pd.Series], today: date, history_y
     parts.append("### Реални нива")
     parts.append("")
 
-    if core_hicp_yoy is None:
-        parts.append("_HICP Core липсва — реалните нива не могат да се изчислят._")
+    if deflator is None:
+        parts.append("_Дефлатор липсва (нито headline, нито core HICP) — реалните нива не могат да се изчислят._")
         parts.append("")
     else:
+        core_str = f"{core_hicp_yoy:+.2f}%" if core_hicp_yoy is not None else "—"
+        head_str = f"{headline_hicp_yoy:+.2f}%" if headline_hicp_yoy is not None else "—"
         parts.append(
-            f"_HICP Core (`{CORE_DEFLATOR_KEY}`) YoY = **{core_hicp_yoy:+.2f}%** — "
-            f"използва се като deflator._"
+            f"_Дефлатор = **{defl_short} = {deflator:+.2f}%** (покупателна способност). "
+            f"Референция: HICP headline (`{HEADLINE_DEFLATOR_KEY}`) {head_str} · "
+            f"HICP core (`{CORE_DEFLATOR_KEY}`) {core_str} — core за underlying, headline за real-X._"
         )
         parts.append("")
         parts.append("| Метрика | Стойност | Интерпретация |")
@@ -336,7 +350,7 @@ def _render_cross_spreads(snapshot: dict[str, pd.Series], today: date, history_y
         if comp is not None and not comp.empty:
             comp_yoy = _yoy_pct(comp, periods=4)  # quarterly
             if comp_yoy is not None:
-                real = comp_yoy - core_hicp_yoy
+                real = comp_yoy - deflator
                 interp = (
                     "workers winning (real wage growth)" if real > 0.5 else
                     "workers losing (real wages contract)" if real < -0.3 else
@@ -344,15 +358,16 @@ def _render_cross_spreads(snapshot: dict[str, pd.Series], today: date, history_y
                 )
                 # #11: заплатата е ТРИМЕСЕЧНА (lag 1Q), HICP е МЕСЕЧЕН → разкриваме
                 # винтиджите, за да не чете разликата като синхронна (различни периоди).
+                _defl_key = HEADLINE_DEFLATOR_KEY if headline_hicp_yoy is not None else CORE_DEFLATOR_KEY
                 wage_d = _last_obs_date(comp)
-                hicp_d = _last_obs_date(snapshot.get(CORE_DEFLATOR_KEY))
+                hicp_d = _last_obs_date(snapshot.get(_defl_key))
                 vint = (
                     f" _(заплата към {wage_d:%Y-%m}, HICP към {hicp_d:%Y-%m})_"
                     if wage_d and hicp_d else ""
                 )
                 parts.append(
                     f"| Real wages (compensation Q-o-Q ann.) | "
-                    f"{real:+.2f}% (nominal {comp_yoy:+.2f}% − HICP core {core_hicp_yoy:+.2f}%){vint} | {interp} |"
+                    f"{real:+.2f}% (nominal {comp_yoy:+.2f}% − {defl_short} {deflator:+.2f}%){vint} | {interp} |"
                 )
 
         # Real DFR forward (ECB_DFR − SPF LT)
@@ -491,7 +506,7 @@ def _render_cross_spreads(snapshot: dict[str, pd.Series], today: date, history_y
         pct = _percentile_5y(spf_series, history_years)
         pct_str = f"{pct:.0f}%" if pct is not None else "—"
         sigma_dist = (cur - spf_zone["mean"]) / spf_zone["std"] if spf_zone["std"] > 0 else 0.0
-        parts.append("| Серия | Текущо | Anchored zone (±1σ) | Състояние | 5y percentile |")
+        parts.append("| Серия | Текущо | Anchored zone (±1σ) | Състояние | percentile (10г) |")
         parts.append("|---|---|---|---|---|")
         parts.append(
             f"| `{FORWARD_INFL_KEY}` | {cur:.2f}% | "
@@ -666,7 +681,7 @@ def _render_anomalies(anomaly_report, snapshot, today: date, history_years: int)
         f"Серии с **|z|>{anomaly_report.threshold:.0f}** "
         f"(lookback {anomaly_report.lookback_years}y), "
         f"сортирани по абсолютна сила. Всеки fact card съдържа стойност, "
-        f"делта в правилни units (bps/Δ/%), 5-годишен range, "
+        f"делта в правилни units (bps/Δ/%), 10-годишен range, "
         f"последни {FACT_CARD_TAIL} readings и narrative_hint."
     )
     parts.append("")
@@ -721,7 +736,7 @@ def _series_fact_card(
         long_chg = float("nan")
         short_chg = float("nan")
 
-    # 5y window stats
+    # history_years window stats (канон 10г)
     cutoff = pd.Timestamp(last_date_str) - pd.DateOffset(years=history_years)
     s_hist = s[s.index >= cutoff]
     if len(s_hist) > 1:
@@ -797,7 +812,7 @@ def _series_fact_card(
     pct_str = f"{pct_rank:.0f}%" if not math.isnan(pct_rank) else "—"
     lines.append(
         f"- **Текущо ({last_date_str}):** {fmt_value(last_value)} · "
-        f"**z** {z:+.2f} · **percentile (5y)** {pct_str}"
+        f"**z** {z:+.2f} · **percentile (10г)** {pct_str}"
         + (f" · **Δ direction** {anomaly.direction}" if anomaly else "")
         + extreme_marker
     )
@@ -809,10 +824,10 @@ def _series_fact_card(
         f"Δ short {fmt_change(short_chg, kind)} (display: {kind})"
     )
 
-    # 5y range
+    # range (10г)
     if not (math.isnan(hist_min) or math.isnan(hist_max)):
         lines.append(
-            f"- **5y range:** мин {fmt_value(hist_min)} · "
+            f"- **10г range:** мин {fmt_value(hist_min)} · "
             f"медиана {fmt_value(hist_median)} · макс {fmt_value(hist_max)}"
         )
 
@@ -838,9 +853,9 @@ def _render_methodology_compact() -> str:
     return """## 5. Методология (compact)
 
 - **Breadth ↑** — % серии в peer group с положителен 1-периоден momentum. Прагове: >60% разширяване, <40% свиване, между = смесено.
-- **Breadth |z|>2** — % серии в групата със стойност >2 стандартни отклонения от 5y mean (екстремна).
-- **z-score** — стандартизирана отдалеченост от 5y средна. |z|>2 = ~5% от времето в нормална дистрибуция.
-- **Percentile (5y)** — къде стои текущата стойност в 5-годишното разпределение (0% = нов 5y минимум, 100% = нов 5y максимум).
+- **Breadth |z|>2** — % серии в групата със стойност >2 стандартни отклонения от 10г mean (екстремна).
+- **z-score** — стандартизирана отдалеченост от 10г средна. |z|>2 = ~5% от времето в нормална дистрибуция.
+- **Percentile (10г)** — къде стои текущата стойност в 10-годишното разпределение (0% = нов 10г минимум, 100% = нов 10г максимум). Канон 10г за всички публикувани повърхности (context/Пулс/api). NEW 5Y MAX/MIN флаговете са отделен anomaly прозорец (5г lookback).
 - **Cross-lens states** — `both_up` / `both_down` / `a_up_b_down` / `a_down_b_up` (divergence) / `transition` (между прагове) / `insufficient_data`.
 - **Display-by-type** — за rate-нива (BUND, BTP, OAT, ECB_DFR, UNRATE) Δ е в bps; за signed индекси (CISS, ESI, confidence) — абсолютна делта; за price levels (HICP, IP, GDP) — %.
 - **Period-aware staleness** — series flagged като DATA_STALE ако last_obs > period_length + release_lag (EU quarterly threshold = 140d, monthly = 60d).
