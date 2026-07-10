@@ -147,6 +147,11 @@ eu_macro_dashboard/
 
 ---
 
+## O3 конвенция (Вълна 1, 2026-07)
+
+- **Каноничен degenerate guard** (единен US/EU/CN): MAD=0 в 10-г. прозорец → fallback към пълната история (на score_basis) + клип ±6σ + флагове `scale_fallback`/`degenerate`. Спира фалшивото „неутрално 50".
+- Всяко число носи прозореца си в **`percentile_window`** ("10г" / "пълна история"); суровият z е в **`z_raw`** (полето `z_score` остава полярностно-ориентирано).
+
 ## License
 
 MIT — виж [LICENSE](LICENSE).

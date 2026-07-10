@@ -440,7 +440,9 @@ def build_series_data(snapshot: dict, today: date, years: int = 7) -> dict:
                 "value": _clean(latest_val),
                 "yoy_change": _clean(yoy_val),
                 "percentile": _clean(score_data.get("percentile")),
-                "z_score": _clean(score_data.get("z_score")),
+                "percentile_window": score_data.get("percentile_window"),
+                "z_score": _clean(score_data.get("z_score")),   # oriented (знак=здраве)
+                "z_raw": _clean(score_data.get("z_raw")),        # суров (над/под медиана)
                 "health_z": _clean(score_data.get("health_z")),
                 "dev_sigma": _clean(score_data.get("dev_sigma")),
                 "severity": score_data.get("severity"),
