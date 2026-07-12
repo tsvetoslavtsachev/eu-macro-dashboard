@@ -313,6 +313,16 @@ def cmd_briefing(args) -> int:
         deep_link=deep_filename,
     )
     print(f"✓ Quick готов: {quick_path}")
+
+    # ─── Landing index.html (China-style: копие на най-новия briefing) ─────
+    # Локалният сървър на output/ (порт 8775) показва това като входна страница —
+    # иначе браузърът дава гол directory listing. Копираме deep briefing-а.
+    # Опреснява се при всеки нов briefing, за да не гние. (Production Pages
+    # ползва briefing_quick_ за index — виж CI weekly_update.yml.)
+    index_path = f"{OUTPUT_DIR}/index.html"
+    Path(index_path).write_bytes(Path(output_path).read_bytes())
+    print(f"✓ index.html ← {Path(output_path).name}")
+
     if not args.no_browser:
         try:
             webbrowser.open(f"file://{Path(output_path).resolve()}")

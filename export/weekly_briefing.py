@@ -174,6 +174,11 @@ def _render_header(today: date, n_series: int, n_anomalies: int, n_active_cross:
   <div class="brief-title">
     <h1><span class="flag">🇪🇺</span> Седмичен макро брифинг — Еврозона</h1>
     <div class="brief-subtitle">Генериран {today.strftime('%d %B %Y')} · ECB SDW + Eurostat данни</div>
+    <div class="brief-crosslink" style="margin-top:6px;font-size:12px;color:#8b949e;" title="Живата снимка = macro-web (текущите стойности на уредите сега, на живо). Това е седмичното четиво — разказ, контекст, история; за моментната снимка отвори macro-web (табът Еврозона).">
+      Живата снимка → Макро web:
+      <a href="http://localhost:8765/#EA" style="color:#58a6ff;text-decoration:none;">локално</a>
+      · <a href="https://tsvetoslavtsachev.github.io/macro-web-dashboard/#EA" style="color:#58a6ff;text-decoration:none;">публично</a>
+    </div>
   </div>
   <div class="brief-header-right">
     <div class="score-circle" style="border-color:{score_color}">
