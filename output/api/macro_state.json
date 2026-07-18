@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-07-11",
-  "generated_at": "2026-07-11T09:07:34.290730Z",
+  "as_of_date": "2026-07-18",
+  "generated_at": "2026-07-18T09:08:57.945465Z",
   "executive_summary": {
     "regime_key": "disinflation_cooling",
     "regime_label_bg": "Дезинфлация и охлаждане",
@@ -9,23 +9,19 @@
     "narrative": "Синхронно охлаждане — labor и инфлация отстъпват заедно. Рискът се мести към overshooting, ако claims ускорят. Най-отклонена леща: Инфлация и цени — breadth 0% (свиване), 1 аномалии, 0 нови екстремума. За наблюдение: EA_BUND_2Y (z=+5.27) — най-силното отклонение.",
     "supporting_signals": [
       "Най-силна аномалия: EA_BUND_2Y z=+5.27",
-      "Активни двойки: Stagflation test=both_down; Sentiment × Hard=both_up; Growth × Labor=both_up"
+      "Активни двойки: Stagflation test=both_down"
     ],
     "primary_driver": "stagflation_test",
     "regime_confidence": "confirmed",
-    "stale_excluded_count": 5,
+    "stale_excluded_count": 1,
     "stale_excluded_keys": [
-      "EA_EXPORT_VOLUME",
-      "EA_EXP_UV",
-      "EA_IMP_UV",
-      "EA_PERMIT_DW",
-      "EA_TOT_MONTHLY"
+      "EA_PERMIT_DW"
     ]
   },
   "lenses": {
     "labor": {
-      "score": 34.7,
-      "health_z": -0.634,
+      "score": 34.9,
+      "health_z": -0.622,
       "direction": "contracting",
       "breadth_pct": 42.9,
       "anomalies_count": 1,
@@ -90,17 +86,17 @@
       ]
     },
     "growth": {
-      "score": 38.7,
-      "health_z": -0.461,
+      "score": 38.9,
+      "health_z": -0.452,
       "direction": "mixed",
-      "breadth_pct": 16.7,
+      "breadth_pct": 8.3,
       "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": []
     },
     "inflation": {
-      "score": 48.0,
-      "health_z": -0.08,
+      "score": 47.8,
+      "health_z": -0.086,
       "direction": "mixed",
       "breadth_pct": 85.7,
       "anomalies_count": 1,
@@ -108,8 +104,8 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 44.0,
-      "health_z": -0.24,
+      "score": 45.0,
+      "health_z": -0.202,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -188,21 +184,35 @@
       ]
     },
     "external": {
-      "score": 13.4,
-      "health_z": -1.869,
+      "score": 15.7,
+      "health_z": -1.682,
       "direction": "contracting",
-      "breadth_pct": 16.7,
-      "anomalies_count": 0,
+      "breadth_pct": 12.5,
+      "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": [
         {
           "lens": "external",
+          "group_a": "input_costs",
+          "group_b": "processing",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "input_costs е по-силна (100%) отколкото processing (0%) — разминаване +100%.",
+          "name_bg": "input_costs vs processing",
+          "pair_id": "external__input_costs__vs__processing",
+          "slot_a_label": "input_costs",
+          "slot_b_label": "processing",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "external",
           "group_a": "external_balance",
           "group_b": "input_costs",
-          "breadth_a": 0.5,
+          "breadth_a": 0.333,
           "breadth_b": 1.0,
-          "diff": -0.5,
-          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (50%) — разминаване +50%.",
+          "diff": -0.667,
+          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (33%) — разминаване +67%.",
           "name_bg": "external_balance vs input_costs",
           "pair_id": "external__external_balance__vs__input_costs",
           "slot_a_label": "external_balance",
@@ -242,6 +252,21 @@
       "is_new_extreme": false,
       "new_extreme_direction": null,
       "narrative_hint": "DG ECFIN survey: forward-looking labor сигнал от услугите (~70% от GDP). Дълга история (от 1996) — за разлика от teibs030 (EA_EMPLOYMENT_EXP, 12m). Същата полярност (higher=better). De-singleton-ва labor_sentiment."
+    },
+    {
+      "series_id": "EA_TRADE_BALANCE",
+      "name_bg": "Търговски баланс (стоки, извън-ЕА, M€, SCA)",
+      "lens": [
+        "external"
+      ],
+      "peer_group": "external_balance",
+      "z_score": -2.375,
+      "direction": "down",
+      "current_value": -4969.9,
+      "last_date": "2026-05-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Стоковият баланс с третите страни. Срив към дефицит (2022) = енергийната сметка изпреварва износа. Полярност +1."
     },
     {
       "series_id": "EA_SELLING_PRICE_EXP",
@@ -365,28 +390,28 @@
       "pair_id": "sentiment_vs_hard_data",
       "name_bg": "Очаквания срещу твърди данни",
       "question_bg": "Sentiment отразява ли реалната икономика?",
-      "state": "both_up",
-      "interpretation": "Healthy expansion: sentiment + hard data confirm-ват растеж.",
+      "state": "transition",
+      "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
       "breadth_a": 0.778,
-      "breadth_b": 0.75,
-      "state_raw": "transition",
+      "breadth_b": 0.5,
+      "state_raw": "both_up",
       "breadth_a_raw": 0.778,
-      "breadth_b_raw": 0.5
+      "breadth_b_raw": 1.0
     },
     {
       "pair_id": "growth_labor_lead_lag",
       "name_bg": "Растеж срещу труд (lead-lag)",
       "question_bg": "Активността и пазарът на труда движат ли се заедно?",
-      "state": "both_up",
-      "interpretation": "Синхронна експанзия: активността расте и трудовият пазар се засилва. Класическа expansion конфигурация.",
+      "state": "transition",
+      "interpretation": "Смесена картина — изчакай alignment на двата блока.",
       "slot_a_label": "Твърда активност (IP, retail, GDP)",
       "slot_b_label": "Пазар на труда (сила)",
-      "breadth_a": 0.75,
+      "breadth_a": 0.5,
       "breadth_b": 0.75,
-      "state_raw": "transition",
-      "breadth_a_raw": 0.5,
+      "state_raw": "both_up",
+      "breadth_a_raw": 1.0,
       "breadth_b_raw": 1.0
     }
   ],
