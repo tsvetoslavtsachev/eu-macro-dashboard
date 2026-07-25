@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-07-18",
-  "generated_at": "2026-07-18T09:08:57.945465Z",
+  "as_of_date": "2026-07-25",
+  "generated_at": "2026-07-25T09:17:24.326676Z",
   "executive_summary": {
     "regime_key": "disinflation_cooling",
     "regime_label_bg": "Дезинфлация и охлаждане",
@@ -13,9 +13,13 @@
     ],
     "primary_driver": "stagflation_test",
     "regime_confidence": "confirmed",
-    "stale_excluded_count": 1,
+    "stale_excluded_count": 5,
     "stale_excluded_keys": [
-      "EA_PERMIT_DW"
+      "EA_EXPORT_VOLUME",
+      "EA_EXP_UV",
+      "EA_IMP_UV",
+      "EA_PERMIT_DW",
+      "EA_TOT_MONTHLY"
     ]
   },
   "lenses": {
@@ -86,8 +90,8 @@
       ]
     },
     "growth": {
-      "score": 38.9,
-      "health_z": -0.452,
+      "score": 39.9,
+      "health_z": -0.41,
       "direction": "mixed",
       "breadth_pct": 8.3,
       "anomalies_count": 1,
@@ -104,8 +108,8 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 45.0,
-      "health_z": -0.202,
+      "score": 44.8,
+      "health_z": -0.209,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -184,35 +188,21 @@
       ]
     },
     "external": {
-      "score": 15.7,
-      "health_z": -1.682,
+      "score": 12.0,
+      "health_z": -1.989,
       "direction": "contracting",
-      "breadth_pct": 12.5,
+      "breadth_pct": 16.7,
       "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": [
         {
           "lens": "external",
-          "group_a": "input_costs",
-          "group_b": "processing",
-          "breadth_a": 1.0,
-          "breadth_b": 0.0,
-          "diff": 1.0,
-          "interpretation": "input_costs е по-силна (100%) отколкото processing (0%) — разминаване +100%.",
-          "name_bg": "input_costs vs processing",
-          "pair_id": "external__input_costs__vs__processing",
-          "slot_a_label": "input_costs",
-          "slot_b_label": "processing",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "external",
           "group_a": "external_balance",
           "group_b": "input_costs",
-          "breadth_a": 0.333,
+          "breadth_a": 0.0,
           "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (33%) — разминаване +67%.",
+          "diff": -1.0,
+          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (0%) — разминаване +100%.",
           "name_bg": "external_balance vs input_costs",
           "pair_id": "external__external_balance__vs__input_costs",
           "slot_a_label": "external_balance",
