@@ -1,18 +1,18 @@
 {
   "region": "EA",
-  "as_of_date": "2026-08-01",
-  "generated_at": "2026-08-01T09:32:53.580743Z",
+  "as_of_date": "2026-08-08",
+  "generated_at": "2026-08-08T08:06:39.487937Z",
   "executive_summary": {
     "regime_key": "policy_dilemma",
-    "regime_label_bg": "Policy dilemma (индикирана)",
+    "regime_label_bg": "Policy dilemma",
     "css_class": "regime-dilem",
     "narrative": "Policy dilemma — labor market е loose, но инфлацията remains hot. ЕЦБ е заклещена между инфлацията и растежа. Най-отклонена леща: Инфлация и цени — breadth 83% (разширяване), 0 аномалии, 0 нови екстремума. За наблюдение: EA_BUND_2Y (z=+5.27) — най-силното отклонение.",
     "supporting_signals": [
       "Най-силна аномалия: EA_BUND_2Y z=+5.27",
-      "Активни двойки: Stagflation test=a_down_b_up; Sentiment × Hard=both_up; Growth × Labor=both_up"
+      "Активни двойки: Stagflation test=a_down_b_up"
     ],
     "primary_driver": "stagflation_test",
-    "regime_confidence": "indicated",
+    "regime_confidence": "confirmed",
     "stale_excluded_count": 5,
     "stale_excluded_keys": [
       "EA_EXPORT_VOLUME",
@@ -76,8 +76,8 @@
       ]
     },
     "growth": {
-      "score": 42.2,
-      "health_z": -0.313,
+      "score": 41.3,
+      "health_z": -0.354,
       "direction": "mixed",
       "breadth_pct": 16.7,
       "anomalies_count": 0,
@@ -85,17 +85,17 @@
       "intra_divergences": []
     },
     "inflation": {
-      "score": 51.2,
-      "health_z": 0.046,
+      "score": 49.6,
+      "health_z": -0.014,
       "direction": "mixed",
-      "breadth_pct": 85.7,
+      "breadth_pct": 71.4,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": []
     },
     "credit": {
       "score": 45.4,
-      "health_z": -0.184,
+      "health_z": -0.183,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -132,28 +132,13 @@
       ]
     },
     "external": {
-      "score": 12.0,
-      "health_z": -1.989,
+      "score": 13.5,
+      "health_z": -1.855,
       "direction": "contracting",
       "breadth_pct": 16.7,
       "anomalies_count": 1,
       "new_extreme_count": 0,
-      "intra_divergences": [
-        {
-          "lens": "external",
-          "group_a": "external_balance",
-          "group_b": "input_costs",
-          "breadth_a": 0.0,
-          "breadth_b": 1.0,
-          "diff": -1.0,
-          "interpretation": "input_costs е по-силна (100%) отколкото external_balance (0%) — разминаване +100%.",
-          "name_bg": "external_balance vs input_costs",
-          "pair_id": "external__external_balance__vs__input_costs",
-          "slot_a_label": "external_balance",
-          "slot_b_label": "input_costs",
-          "state": "a_down_b_up"
-        }
-      ]
+      "intra_divergences": []
     }
   },
   "top_anomalies": [
@@ -293,28 +278,28 @@
       "pair_id": "sentiment_vs_hard_data",
       "name_bg": "Очаквания срещу твърди данни",
       "question_bg": "Sentiment отразява ли реалната икономика?",
-      "state": "both_up",
-      "interpretation": "Healthy expansion: sentiment + hard data confirm-ват растеж.",
+      "state": "transition",
+      "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
       "breadth_a": 0.667,
-      "breadth_b": 0.75,
+      "breadth_b": 0.5,
       "state_raw": "both_up",
       "breadth_a_raw": 0.667,
-      "breadth_b_raw": 1.0
+      "breadth_b_raw": 0.75
     },
     {
       "pair_id": "growth_labor_lead_lag",
       "name_bg": "Растеж срещу труд (lead-lag)",
       "question_bg": "Активността и пазарът на труда движат ли се заедно?",
-      "state": "both_up",
-      "interpretation": "Синхронна експанзия: активността расте и трудовият пазар се засилва. Класическа expansion конфигурация.",
+      "state": "transition",
+      "interpretation": "Смесена картина — изчакай alignment на двата блока.",
       "slot_a_label": "Твърда активност (IP, retail, GDP)",
       "slot_b_label": "Пазар на труда (сила)",
-      "breadth_a": 0.75,
+      "breadth_a": 0.5,
       "breadth_b": 0.75,
       "state_raw": "both_up",
-      "breadth_a_raw": 1.0,
+      "breadth_a_raw": 0.75,
       "breadth_b_raw": 1.0
     }
   ],
