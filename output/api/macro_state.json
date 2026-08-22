@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-08-15",
-  "generated_at": "2026-08-15T03:22:07.933600Z",
+  "as_of_date": "2026-08-22",
+  "generated_at": "2026-08-22T03:24:52.043720Z",
   "executive_summary": {
     "regime_key": "policy_dilemma",
     "regime_label_bg": "Policy dilemma",
@@ -10,7 +10,7 @@
     "supporting_signals": [
       "Най-силна аномалия: EA_BUND_2Y z=+5.27",
       "2 нови екстремуми в top-3 (lookback 5г.)",
-      "Активни двойки: Stagflation test=a_down_b_up; Sentiment × Hard=both_up; Growth × Labor=both_up"
+      "Активни двойки: Stagflation test=a_down_b_up"
     ],
     "primary_driver": "stagflation_test",
     "regime_confidence": "confirmed",
@@ -73,8 +73,8 @@
       ]
     },
     "growth": {
-      "score": 42.2,
-      "health_z": -0.315,
+      "score": 40.8,
+      "health_z": -0.372,
       "direction": "mixed",
       "breadth_pct": 16.7,
       "anomalies_count": 0,
@@ -83,16 +83,16 @@
     },
     "inflation": {
       "score": 49.6,
-      "health_z": -0.014,
+      "health_z": -0.017,
       "direction": "mixed",
-      "breadth_pct": 71.4,
+      "breadth_pct": 57.1,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": []
     },
     "credit": {
-      "score": 44.8,
-      "health_z": -0.208,
+      "score": 44.7,
+      "health_z": -0.211,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -331,28 +331,28 @@
       "pair_id": "sentiment_vs_hard_data",
       "name_bg": "Очаквания срещу твърди данни",
       "question_bg": "Sentiment отразява ли реалната икономика?",
-      "state": "both_up",
-      "interpretation": "Healthy expansion: sentiment + hard data confirm-ват растеж.",
+      "state": "transition",
+      "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
       "breadth_a": 0.667,
-      "breadth_b": 0.75,
-      "state_raw": "both_up",
+      "breadth_b": 0.5,
+      "state_raw": "transition",
       "breadth_a_raw": 0.667,
-      "breadth_b_raw": 0.75
+      "breadth_b_raw": 0.5
     },
     {
       "pair_id": "growth_labor_lead_lag",
       "name_bg": "Растеж срещу труд (lead-lag)",
       "question_bg": "Активността и пазарът на труда движат ли се заедно?",
-      "state": "both_up",
-      "interpretation": "Синхронна експанзия: активността расте и трудовият пазар се засилва. Класическа expansion конфигурация.",
+      "state": "transition",
+      "interpretation": "Смесена картина — изчакай alignment на двата блока.",
       "slot_a_label": "Твърда активност (IP, retail, GDP)",
       "slot_b_label": "Пазар на труда (сила)",
-      "breadth_a": 0.75,
+      "breadth_a": 0.5,
       "breadth_b": 0.75,
-      "state_raw": "both_up",
-      "breadth_a_raw": 0.75,
+      "state_raw": "transition",
+      "breadth_a_raw": 0.5,
       "breadth_b_raw": 1.0
     }
   ],
