@@ -1,19 +1,19 @@
 {
   "region": "EA",
-  "as_of_date": "2026-08-29",
-  "generated_at": "2026-08-29T09:22:49.432481Z",
+  "as_of_date": "2026-09-05",
+  "generated_at": "2026-09-05T07:07:05.236728Z",
   "executive_summary": {
-    "regime_key": "policy_dilemma",
-    "regime_label_bg": "Policy dilemma",
-    "css_class": "regime-dilem",
-    "narrative": "Policy dilemma — labor market е loose, но инфлацията remains hot. ЕЦБ е заклещена между инфлацията и растежа. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 88% (разширяване), 3 аномалии, 2 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
+    "regime_key": "disinflation_cooling",
+    "regime_label_bg": "Дезинфлация и охлаждане (индикирани)",
+    "css_class": "regime-cool",
+    "narrative": "Синхронно охлаждане — labor и инфлация отстъпват заедно. Рискът се мести към overshooting, ако claims ускорят. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 100% (разширяване), 3 аномалии, 2 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
-      "Най-силна аномалия: EA_BUND_2Y z=+5.27",
+      "Най-силна аномалия: EA_BUND_2Y z=+5.28",
       "2 нови екстремуми в top-3 (lookback 5г.)",
-      "Активни двойки: Stagflation test=a_down_b_up"
+      "Активни двойки: Stagflation test=both_down; ecb_transmission=a_up_b_down; fragmentation_risk=both_up"
     ],
     "primary_driver": "stagflation_test",
-    "regime_confidence": "confirmed",
+    "regime_confidence": "indicated",
     "stale_excluded_count": 5,
     "stale_excluded_keys": [
       "EA_EXPORT_VOLUME",
@@ -25,8 +25,8 @@
   },
   "lenses": {
     "labor": {
-      "score": 42.8,
-      "health_z": -0.291,
+      "score": 42.2,
+      "health_z": -0.313,
       "direction": "mixed",
       "breadth_pct": 42.9,
       "anomalies_count": 0,
@@ -77,8 +77,8 @@
       ]
     },
     "growth": {
-      "score": 40.8,
-      "health_z": -0.371,
+      "score": 40.7,
+      "health_z": -0.378,
       "direction": "mixed",
       "breadth_pct": 25.0,
       "anomalies_count": 0,
@@ -101,74 +101,61 @@
       ]
     },
     "inflation": {
-      "score": 50.9,
-      "health_z": 0.036,
+      "score": 49.6,
+      "health_z": -0.016,
       "direction": "mixed",
-      "breadth_pct": 57.1,
+      "breadth_pct": 42.9,
       "anomalies_count": 0,
       "new_extreme_count": 0,
-      "intra_divergences": []
-    },
-    "credit": {
-      "score": 45.0,
-      "health_z": -0.202,
-      "direction": "mixed",
-      "breadth_pct": 36.8,
-      "anomalies_count": 3,
-      "new_extreme_count": 2,
       "intra_divergences": [
         {
-          "lens": "credit",
-          "group_a": "bank_lending",
-          "group_b": "policy_stance",
-          "breadth_a": 1.0,
-          "breadth_b": 0.5,
-          "diff": 0.5,
-          "interpretation": "bank_lending е по-силна (100%) отколкото policy_stance (50%) — разминаване +50%.",
-          "name_bg": "bank_lending vs policy_stance",
-          "pair_id": "credit__bank_lending__vs__policy_stance",
-          "slot_a_label": "bank_lending",
-          "slot_b_label": "policy_stance",
-          "state": "a_up_b_down"
-        },
-        {
-          "lens": "credit",
-          "group_a": "policy_stance",
-          "group_b": "sovereign_spreads",
-          "breadth_a": 0.5,
-          "breadth_b": 1.0,
-          "diff": -0.5,
-          "interpretation": "sovereign_spreads е по-силна (100%) отколкото policy_stance (50%) — разминаване +50%.",
-          "name_bg": "policy_stance vs sovereign_spreads",
-          "pair_id": "credit__policy_stance__vs__sovereign_spreads",
-          "slot_a_label": "policy_stance",
-          "slot_b_label": "sovereign_spreads",
-          "state": "a_down_b_up"
-        },
-        {
-          "lens": "credit",
-          "group_a": "policy_stance",
-          "group_b": "sovereign_yields",
-          "breadth_a": 0.5,
-          "breadth_b": 1.0,
-          "diff": -0.5,
-          "interpretation": "sovereign_yields е по-силна (100%) отколкото policy_stance (50%) — разминаване +50%.",
-          "name_bg": "policy_stance vs sovereign_yields",
-          "pair_id": "credit__policy_stance__vs__sovereign_yields",
-          "slot_a_label": "policy_stance",
-          "slot_b_label": "sovereign_yields",
+          "lens": "inflation",
+          "group_a": "core_measures",
+          "group_b": "headline_measures",
+          "breadth_a": 0.0,
+          "breadth_b": 0.667,
+          "diff": -0.667,
+          "interpretation": "headline_measures е по-силна (67%) отколкото core_measures (0%) — разминаване +67%.",
+          "name_bg": "core_measures vs headline_measures",
+          "pair_id": "inflation__core_measures__vs__headline_measures",
+          "slot_a_label": "core_measures",
+          "slot_b_label": "headline_measures",
           "state": "a_down_b_up"
         }
       ]
     },
+    "credit": {
+      "score": 43.9,
+      "health_z": -0.247,
+      "direction": "mixed",
+      "breadth_pct": 36.8,
+      "anomalies_count": 3,
+      "new_extreme_count": 2,
+      "intra_divergences": []
+    },
     "external": {
-      "score": 14.8,
-      "health_z": -1.751,
+      "score": 34.3,
+      "health_z": -0.65,
       "direction": "contracting",
       "breadth_pct": 16.7,
       "anomalies_count": 0,
       "new_extreme_count": 0,
-      "intra_divergences": []
+      "intra_divergences": [
+        {
+          "lens": "external",
+          "group_a": "external_balance",
+          "group_b": "input_costs",
+          "breadth_a": 1.0,
+          "breadth_b": 0.333,
+          "diff": 0.667,
+          "interpretation": "external_balance е по-силна (100%) отколкото input_costs (33%) — разминаване +67%.",
+          "name_bg": "external_balance vs input_costs",
+          "pair_id": "external__external_balance__vs__input_costs",
+          "slot_a_label": "external_balance",
+          "slot_b_label": "input_costs",
+          "state": "a_up_b_down"
+        }
+      ]
     }
   },
   "top_anomalies": [
@@ -179,10 +166,10 @@
         "credit"
       ],
       "peer_group": "sovereign_yields",
-      "z_score": 5.27,
+      "z_score": 5.28,
       "direction": "up",
-      "current_value": 2.8325,
-      "last_date": "2026-07-01",
+      "current_value": 2.924,
+      "last_date": "2026-08-01",
       "is_new_extreme": false,
       "new_extreme_direction": null,
       "narrative_hint": "EA-aggregate 2Y yield. Curve slope (10Y-2Y) проксира policy expectations и recession risk."
@@ -223,42 +210,42 @@
       "pair_id": "stagflation_test",
       "name_bg": "Стагфлационен тест",
       "question_bg": "Заплатите ли движат услугите нагоре?",
-      "state": "a_down_b_up",
-      "interpretation": "Sticky services без wage support — не sustainable. Очаквай корекция надолу в core.",
+      "state": "both_down",
+      "interpretation": "Дезинфлация broad-based: и заплати, и базова отстъпват. ЕЦБ има пространство за политика.",
       "slot_a_label": "Натиск от заплати",
       "slot_b_label": "Базова/услуги инфлация",
       "breadth_a": 0.0,
-      "breadth_b": 1.0,
-      "state_raw": "both_up",
+      "breadth_b": 0.0,
+      "state_raw": "a_up_b_down",
       "breadth_a_raw": 1.0,
-      "breadth_b_raw": 1.0
+      "breadth_b_raw": 0.0
     },
     {
       "pair_id": "ecb_transmission",
       "name_bg": "Трансмисия на ЕЦБ политиката",
       "question_bg": "ЕЦБ hike-овете стигат ли до банковото кредитиране?",
-      "state": "transition",
-      "interpretation": "Смесена картина — типично около policy turning points.",
+      "state": "a_up_b_down",
+      "interpretation": "ECB hike-ва, но lending не се свива — transmission lag или счупен. Risk: real economy не отчита restrictive stance.",
       "slot_a_label": "Политика (реална лихва + баланс)",
       "slot_b_label": "Банково кредитиране (свиване)",
-      "breadth_a": 0.5,
+      "breadth_a": 1.0,
       "breadth_b": 0.0,
-      "state_raw": "transition",
-      "breadth_a_raw": 0.5,
+      "state_raw": "a_up_b_down",
+      "breadth_a_raw": 1.0,
       "breadth_b_raw": 0.0
     },
     {
       "pair_id": "fragmentation_risk",
       "name_bg": "Фрагментационен риск",
       "question_bg": "ЕЦБ hike-овете разширяват ли периферните spreads?",
-      "state": "transition",
-      "interpretation": "Mixed signals — гледай individual country drivers.",
+      "state": "both_up",
+      "interpretation": "Fragmentation risk: hike-овете разширяват periphery spreads. Ако упорства — TPI activation candidate. 2011-2012 patron.",
       "slot_a_label": "Политика (реална лихва + баланс)",
       "slot_b_label": "Sovereign spreads (BTP/OAT-Bund)",
-      "breadth_a": 0.5,
+      "breadth_a": 1.0,
       "breadth_b": 1.0,
-      "state_raw": "transition",
-      "breadth_a_raw": 0.5,
+      "state_raw": "both_up",
+      "breadth_a_raw": 1.0,
       "breadth_b_raw": 1.0
     },
     {
@@ -284,10 +271,10 @@
       "slot_a_label": "PPI междинни стоки",
       "slot_b_label": "Core инфлация (HICP)",
       "breadth_a": null,
-      "breadth_b": 1.0,
+      "breadth_b": 0.0,
       "state_raw": "insufficient_data",
       "breadth_a_raw": null,
-      "breadth_b_raw": 1.0
+      "breadth_b_raw": 0.0
     },
     {
       "pair_id": "sentiment_vs_hard_data",
