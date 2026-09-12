@@ -1,19 +1,19 @@
 {
   "region": "EA",
-  "as_of_date": "2026-09-05",
-  "generated_at": "2026-09-05T07:07:05.236728Z",
+  "as_of_date": "2026-09-12",
+  "generated_at": "2026-09-12T07:21:02.940739Z",
   "executive_summary": {
     "regime_key": "disinflation_cooling",
-    "regime_label_bg": "Дезинфлация и охлаждане (индикирани)",
+    "regime_label_bg": "Дезинфлация и охлаждане",
     "css_class": "regime-cool",
-    "narrative": "Синхронно охлаждане — labor и инфлация отстъпват заедно. Рискът се мести към overshooting, ако claims ускорят. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 100% (разширяване), 3 аномалии, 2 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
+    "narrative": "Синхронно охлаждане — labor и инфлация отстъпват заедно. Рискът се мести към overshooting, ако claims ускорят. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 80% (разширяване), 3 аномалии, 2 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: EA_BUND_2Y z=+5.28",
       "2 нови екстремуми в top-3 (lookback 5г.)",
-      "Активни двойки: Stagflation test=both_down; ecb_transmission=a_up_b_down; fragmentation_risk=both_up"
+      "Активни двойки: Stagflation test=both_down; ecb_transmission=a_up_b_down; fragmentation_risk=a_up_b_down"
     ],
     "primary_driver": "stagflation_test",
-    "regime_confidence": "indicated",
+    "regime_confidence": "confirmed",
     "stale_excluded_count": 5,
     "stale_excluded_keys": [
       "EA_EXPORT_VOLUME",
@@ -25,27 +25,13 @@
   },
   "lenses": {
     "labor": {
-      "score": 42.2,
-      "health_z": -0.313,
+      "score": 41.7,
+      "health_z": -0.334,
       "direction": "mixed",
       "breadth_pct": 42.9,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
-        {
-          "lens": "labor",
-          "group_a": "employment",
-          "group_b": "unemployment",
-          "breadth_a": 1.0,
-          "breadth_b": 0.0,
-          "diff": 1.0,
-          "interpretation": "employment е по-силна (100%) отколкото unemployment (0%) — разминаване +100%.",
-          "name_bg": "employment vs unemployment",
-          "pair_id": "labor__employment__vs__unemployment",
-          "slot_a_label": "employment",
-          "slot_b_label": "unemployment",
-          "state": "a_up_b_down"
-        },
         {
           "lens": "labor",
           "group_a": "labor_sentiment",
@@ -73,32 +59,59 @@
           "slot_a_label": "unemployment",
           "slot_b_label": "wages",
           "state": "a_down_b_up"
+        },
+        {
+          "lens": "labor",
+          "group_a": "employment",
+          "group_b": "labor_sentiment",
+          "breadth_a": 0.5,
+          "breadth_b": 1.0,
+          "diff": -0.5,
+          "interpretation": "labor_sentiment е по-силна (100%) отколкото employment (50%) — разминаване +50%.",
+          "name_bg": "employment vs labor_sentiment",
+          "pair_id": "labor__employment__vs__labor_sentiment",
+          "slot_a_label": "employment",
+          "slot_b_label": "labor_sentiment",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "labor",
+          "group_a": "employment",
+          "group_b": "unemployment",
+          "breadth_a": 0.5,
+          "breadth_b": 0.0,
+          "diff": 0.5,
+          "interpretation": "employment е по-силна (50%) отколкото unemployment (0%) — разминаване +50%.",
+          "name_bg": "employment vs unemployment",
+          "pair_id": "labor__employment__vs__unemployment",
+          "slot_a_label": "employment",
+          "slot_b_label": "unemployment",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "labor",
+          "group_a": "employment",
+          "group_b": "wages",
+          "breadth_a": 0.5,
+          "breadth_b": 1.0,
+          "diff": -0.5,
+          "interpretation": "wages е по-силна (100%) отколкото employment (50%) — разминаване +50%.",
+          "name_bg": "employment vs wages",
+          "pair_id": "labor__employment__vs__wages",
+          "slot_a_label": "employment",
+          "slot_b_label": "wages",
+          "state": "a_down_b_up"
         }
       ]
     },
     "growth": {
-      "score": 40.7,
-      "health_z": -0.378,
+      "score": 42.6,
+      "health_z": -0.299,
       "direction": "mixed",
       "breadth_pct": 25.0,
       "anomalies_count": 0,
       "new_extreme_count": 0,
-      "intra_divergences": [
-        {
-          "lens": "growth",
-          "group_a": "country_leading",
-          "group_b": "sentiment",
-          "breadth_a": 0.333,
-          "breadth_b": 0.778,
-          "diff": -0.444,
-          "interpretation": "sentiment е по-силна (78%) отколкото country_leading (33%) — разминаване +44%.",
-          "name_bg": "country_leading vs sentiment",
-          "pair_id": "growth__country_leading__vs__sentiment",
-          "slot_a_label": "country_leading",
-          "slot_b_label": "sentiment",
-          "state": "a_down_b_up"
-        }
-      ]
+      "intra_divergences": []
     },
     "inflation": {
       "score": 49.6,
@@ -125,13 +138,56 @@
       ]
     },
     "credit": {
-      "score": 43.9,
-      "health_z": -0.247,
+      "score": 42.9,
+      "health_z": -0.285,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
       "new_extreme_count": 2,
-      "intra_divergences": []
+      "intra_divergences": [
+        {
+          "lens": "credit",
+          "group_a": "bank_lending",
+          "group_b": "sovereign_spreads",
+          "breadth_a": 1.0,
+          "breadth_b": 0.2,
+          "diff": 0.8,
+          "interpretation": "bank_lending е по-силна (100%) отколкото sovereign_spreads (20%) — разминаване +80%.",
+          "name_bg": "bank_lending vs sovereign_spreads",
+          "pair_id": "credit__bank_lending__vs__sovereign_spreads",
+          "slot_a_label": "bank_lending",
+          "slot_b_label": "sovereign_spreads",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "credit",
+          "group_a": "policy_stance",
+          "group_b": "sovereign_spreads",
+          "breadth_a": 1.0,
+          "breadth_b": 0.2,
+          "diff": 0.8,
+          "interpretation": "policy_stance е по-силна (100%) отколкото sovereign_spreads (20%) — разминаване +80%.",
+          "name_bg": "policy_stance vs sovereign_spreads",
+          "pair_id": "credit__policy_stance__vs__sovereign_spreads",
+          "slot_a_label": "policy_stance",
+          "slot_b_label": "sovereign_spreads",
+          "state": "a_up_b_down"
+        },
+        {
+          "lens": "credit",
+          "group_a": "sovereign_spreads",
+          "group_b": "sovereign_yields",
+          "breadth_a": 0.2,
+          "breadth_b": 1.0,
+          "diff": -0.8,
+          "interpretation": "sovereign_yields е по-силна (100%) отколкото sovereign_spreads (20%) — разминаване +80%.",
+          "name_bg": "sovereign_spreads vs sovereign_yields",
+          "pair_id": "credit__sovereign_spreads__vs__sovereign_yields",
+          "slot_a_label": "sovereign_spreads",
+          "slot_b_label": "sovereign_yields",
+          "state": "a_down_b_up"
+        }
+      ]
     },
     "external": {
       "score": 34.3,
@@ -181,10 +237,10 @@
         "credit"
       ],
       "peer_group": "sovereign_yields",
-      "z_score": 2.174,
+      "z_score": 2.182,
       "direction": "up",
-      "current_value": 3.85,
-      "last_date": "2026-07-01",
+      "current_value": 4.0,
+      "last_date": "2026-08-01",
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "France sovereign yield — компонент на OAT-Bund spread. Core-but-not-DE EA stress indicator."
@@ -196,10 +252,10 @@
         "credit"
       ],
       "peer_group": "sovereign_yields",
-      "z_score": 2.168,
+      "z_score": 2.143,
       "direction": "up",
-      "current_value": 3.07,
-      "last_date": "2026-07-01",
+      "current_value": 3.185,
+      "last_date": "2026-08-01",
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Germany 10Y, Maastricht-criterion measure. Reference за BTP-Bund / OAT-Bund spread изчисления."
@@ -238,15 +294,15 @@
       "pair_id": "fragmentation_risk",
       "name_bg": "Фрагментационен риск",
       "question_bg": "ЕЦБ hike-овете разширяват ли периферните spreads?",
-      "state": "both_up",
-      "interpretation": "Fragmentation risk: hike-овете разширяват periphery spreads. Ако упорства — TPI activation candidate. 2011-2012 patron.",
+      "state": "a_up_b_down",
+      "interpretation": "Hike-ове + сжимащи се spreads — smooth transmission, credible policy.",
       "slot_a_label": "Политика (реална лихва + баланс)",
       "slot_b_label": "Sovereign spreads (BTP/OAT-Bund)",
       "breadth_a": 1.0,
-      "breadth_b": 1.0,
-      "state_raw": "both_up",
+      "breadth_b": 0.2,
+      "state_raw": "a_up_b_down",
       "breadth_a_raw": 1.0,
-      "breadth_b_raw": 1.0
+      "breadth_b_raw": 0.2
     },
     {
       "pair_id": "inflation_anchoring",
@@ -299,10 +355,10 @@
       "slot_a_label": "Твърда активност (IP, retail, GDP)",
       "slot_b_label": "Пазар на труда (сила)",
       "breadth_a": 0.5,
-      "breadth_b": 0.75,
+      "breadth_b": 0.5,
       "state_raw": "transition",
       "breadth_a_raw": 0.5,
-      "breadth_b_raw": 1.0
+      "breadth_b_raw": 0.75
     }
   ],
   "non_consensus_highlights": []
