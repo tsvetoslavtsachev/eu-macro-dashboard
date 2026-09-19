@@ -1,7 +1,7 @@
 {
   "region": "EA",
-  "as_of_date": "2026-09-12",
-  "generated_at": "2026-09-12T07:21:02.940739Z",
+  "as_of_date": "2026-09-19",
+  "generated_at": "2026-09-19T07:32:44.399284Z",
   "executive_summary": {
     "regime_key": "disinflation_cooling",
     "regime_label_bg": "Дезинфлация и охлаждане",
@@ -14,13 +14,9 @@
     ],
     "primary_driver": "stagflation_test",
     "regime_confidence": "confirmed",
-    "stale_excluded_count": 5,
+    "stale_excluded_count": 1,
     "stale_excluded_keys": [
-      "EA_EXPORT_VOLUME",
-      "EA_EXP_UV",
-      "EA_IMP_UV",
-      "EA_PERMIT_DW",
-      "EA_TOT_MONTHLY"
+      "EA_PERMIT_DW"
     ]
   },
   "lenses": {
@@ -105,8 +101,8 @@
       ]
     },
     "growth": {
-      "score": 42.6,
-      "health_z": -0.299,
+      "score": 41.8,
+      "health_z": -0.33,
       "direction": "mixed",
       "breadth_pct": 25.0,
       "anomalies_count": 0,
@@ -138,8 +134,8 @@
       ]
     },
     "credit": {
-      "score": 42.9,
-      "health_z": -0.285,
+      "score": 43.1,
+      "health_z": -0.28,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -190,10 +186,10 @@
       ]
     },
     "external": {
-      "score": 34.3,
-      "health_z": -0.65,
-      "direction": "contracting",
-      "breadth_pct": 16.7,
+      "score": 38.8,
+      "health_z": -0.456,
+      "direction": "mixed",
+      "breadth_pct": 25.0,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
@@ -210,6 +206,20 @@
           "slot_a_label": "external_balance",
           "slot_b_label": "input_costs",
           "state": "a_up_b_down"
+        },
+        {
+          "lens": "external",
+          "group_a": "input_costs",
+          "group_b": "processing",
+          "breadth_a": 0.333,
+          "breadth_b": 1.0,
+          "diff": -0.667,
+          "interpretation": "processing е по-силна (100%) отколкото input_costs (33%) — разминаване +67%.",
+          "name_bg": "input_costs vs processing",
+          "pair_id": "external__input_costs__vs__processing",
+          "slot_a_label": "input_costs",
+          "slot_b_label": "processing",
+          "state": "a_down_b_up"
         }
       ]
     }
