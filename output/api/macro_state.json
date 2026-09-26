@@ -1,22 +1,26 @@
 {
   "region": "EA",
-  "as_of_date": "2026-09-19",
-  "generated_at": "2026-09-19T07:32:44.399284Z",
+  "as_of_date": "2026-09-26",
+  "generated_at": "2026-09-26T07:59:45.848308Z",
   "executive_summary": {
     "regime_key": "disinflation_cooling",
     "regime_label_bg": "Дезинфлация и охлаждане",
     "css_class": "regime-cool",
-    "narrative": "Синхронно охлаждане — labor и инфлация отстъпват заедно. Рискът се мести към overshooting, ако claims ускорят. Най-отклонена леща: Финансови условия, кредит и спредове — breadth 80% (разширяване), 3 аномалии, 2 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
+    "narrative": "Синхронно охлаждане — labor и инфлация отстъпват заедно. Рискът се мести към overshooting, ако claims ускорят. Най-отклонена леща: Растеж и активност — breadth 76% (разширяване), 0 аномалии, 0 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: EA_BUND_2Y z=+5.28",
       "2 нови екстремуми в top-3 (lookback 5г.)",
-      "Активни двойки: Stagflation test=both_down; ecb_transmission=a_up_b_down; fragmentation_risk=a_up_b_down"
+      "Активни двойки: Stagflation test=both_down; fragmentation_risk=a_up_b_down"
     ],
     "primary_driver": "stagflation_test",
     "regime_confidence": "confirmed",
-    "stale_excluded_count": 1,
+    "stale_excluded_count": 5,
     "stale_excluded_keys": [
-      "EA_PERMIT_DW"
+      "EA_EXPORT_VOLUME",
+      "EA_EXP_UV",
+      "EA_IMP_UV",
+      "EA_PERMIT_DW",
+      "EA_TOT_MONTHLY"
     ]
   },
   "lenses": {
@@ -101,13 +105,28 @@
       ]
     },
     "growth": {
-      "score": 41.8,
-      "health_z": -0.33,
+      "score": 42.2,
+      "health_z": -0.316,
       "direction": "mixed",
       "breadth_pct": 25.0,
       "anomalies_count": 0,
       "new_extreme_count": 0,
-      "intra_divergences": []
+      "intra_divergences": [
+        {
+          "lens": "growth",
+          "group_a": "country_leading",
+          "group_b": "hard_activity",
+          "breadth_a": 1.0,
+          "breadth_b": 0.5,
+          "diff": 0.5,
+          "interpretation": "country_leading е по-силна (100%) отколкото hard_activity (50%) — разминаване +50%.",
+          "name_bg": "country_leading vs hard_activity",
+          "pair_id": "growth__country_leading__vs__hard_activity",
+          "slot_a_label": "country_leading",
+          "slot_b_label": "hard_activity",
+          "state": "a_up_b_down"
+        }
+      ]
     },
     "inflation": {
       "score": 49.6,
@@ -134,27 +153,13 @@
       ]
     },
     "credit": {
-      "score": 43.1,
-      "health_z": -0.28,
+      "score": 44.0,
+      "health_z": -0.243,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
       "new_extreme_count": 2,
       "intra_divergences": [
-        {
-          "lens": "credit",
-          "group_a": "bank_lending",
-          "group_b": "sovereign_spreads",
-          "breadth_a": 1.0,
-          "breadth_b": 0.2,
-          "diff": 0.8,
-          "interpretation": "bank_lending е по-силна (100%) отколкото sovereign_spreads (20%) — разминаване +80%.",
-          "name_bg": "bank_lending vs sovereign_spreads",
-          "pair_id": "credit__bank_lending__vs__sovereign_spreads",
-          "slot_a_label": "bank_lending",
-          "slot_b_label": "sovereign_spreads",
-          "state": "a_up_b_down"
-        },
         {
           "lens": "credit",
           "group_a": "policy_stance",
@@ -182,14 +187,42 @@
           "slot_a_label": "sovereign_spreads",
           "slot_b_label": "sovereign_yields",
           "state": "a_down_b_up"
+        },
+        {
+          "lens": "credit",
+          "group_a": "bank_lending",
+          "group_b": "policy_stance",
+          "breadth_a": 0.5,
+          "breadth_b": 1.0,
+          "diff": -0.5,
+          "interpretation": "policy_stance е по-силна (100%) отколкото bank_lending (50%) — разминаване +50%.",
+          "name_bg": "bank_lending vs policy_stance",
+          "pair_id": "credit__bank_lending__vs__policy_stance",
+          "slot_a_label": "bank_lending",
+          "slot_b_label": "policy_stance",
+          "state": "a_down_b_up"
+        },
+        {
+          "lens": "credit",
+          "group_a": "bank_lending",
+          "group_b": "sovereign_yields",
+          "breadth_a": 0.5,
+          "breadth_b": 1.0,
+          "diff": -0.5,
+          "interpretation": "sovereign_yields е по-силна (100%) отколкото bank_lending (50%) — разминаване +50%.",
+          "name_bg": "bank_lending vs sovereign_yields",
+          "pair_id": "credit__bank_lending__vs__sovereign_yields",
+          "slot_a_label": "bank_lending",
+          "slot_b_label": "sovereign_yields",
+          "state": "a_down_b_up"
         }
       ]
     },
     "external": {
-      "score": 38.8,
-      "health_z": -0.456,
+      "score": 38.6,
+      "health_z": -0.465,
       "direction": "mixed",
-      "breadth_pct": 25.0,
+      "breadth_pct": 16.7,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
@@ -206,20 +239,6 @@
           "slot_a_label": "external_balance",
           "slot_b_label": "input_costs",
           "state": "a_up_b_down"
-        },
-        {
-          "lens": "external",
-          "group_a": "input_costs",
-          "group_b": "processing",
-          "breadth_a": 0.333,
-          "breadth_b": 1.0,
-          "diff": -0.667,
-          "interpretation": "processing е по-силна (100%) отколкото input_costs (33%) — разминаване +67%.",
-          "name_bg": "input_costs vs processing",
-          "pair_id": "external__input_costs__vs__processing",
-          "slot_a_label": "input_costs",
-          "slot_b_label": "processing",
-          "state": "a_down_b_up"
         }
       ]
     }
@@ -290,15 +309,15 @@
       "pair_id": "ecb_transmission",
       "name_bg": "Трансмисия на ЕЦБ политиката",
       "question_bg": "ЕЦБ hike-овете стигат ли до банковото кредитиране?",
-      "state": "a_up_b_down",
-      "interpretation": "ECB hike-ва, но lending не се свива — transmission lag или счупен. Risk: real economy не отчита restrictive stance.",
+      "state": "transition",
+      "interpretation": "Смесена картина — типично около policy turning points.",
       "slot_a_label": "Политика (реална лихва + баланс)",
       "slot_b_label": "Банково кредитиране (свиване)",
       "breadth_a": 1.0,
-      "breadth_b": 0.0,
-      "state_raw": "a_up_b_down",
+      "breadth_b": 0.5,
+      "state_raw": "transition",
       "breadth_a_raw": 1.0,
-      "breadth_b_raw": 0.0
+      "breadth_b_raw": 0.5
     },
     {
       "pair_id": "fragmentation_risk",
