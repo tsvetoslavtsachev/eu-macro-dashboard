@@ -1,19 +1,19 @@
 {
   "region": "EA",
-  "as_of_date": "2026-09-26",
-  "generated_at": "2026-09-26T07:59:45.848308Z",
+  "as_of_date": "2026-10-03",
+  "generated_at": "2026-10-03T08:36:03.359444Z",
   "executive_summary": {
-    "regime_key": "disinflation_cooling",
-    "regime_label_bg": "Дезинфлация и охлаждане",
-    "css_class": "regime-cool",
-    "narrative": "Синхронно охлаждане — labor и инфлация отстъпват заедно. Рискът се мести към overshooting, ако claims ускорят. Най-отклонена леща: Растеж и активност — breadth 76% (разширяване), 0 аномалии, 0 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
+    "regime_key": "policy_dilemma",
+    "regime_label_bg": "Policy dilemma (индикирана)",
+    "css_class": "regime-dilem",
+    "narrative": "Policy dilemma — labor market е loose, но инфлацията remains hot. ЕЦБ е заклещена между инфлацията и растежа. Най-отклонена леща: Инфлация и цени — breadth 100% (разширяване), 0 аномалии, 0 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
-      "Най-силна аномалия: EA_BUND_2Y z=+5.28",
+      "Най-силна аномалия: EA_BUND_2Y z=+5.60",
       "2 нови екстремуми в top-3 (lookback 5г.)",
-      "Активни двойки: Stagflation test=both_down; fragmentation_risk=a_up_b_down"
+      "Активни двойки: Stagflation test=a_down_b_up; fragmentation_risk=a_up_b_down"
     ],
     "primary_driver": "stagflation_test",
-    "regime_confidence": "confirmed",
+    "regime_confidence": "indicated",
     "stale_excluded_count": 5,
     "stale_excluded_keys": [
       "EA_EXPORT_VOLUME",
@@ -25,8 +25,8 @@
   },
   "lenses": {
     "labor": {
-      "score": 41.7,
-      "health_z": -0.334,
+      "score": 41.1,
+      "health_z": -0.36,
       "direction": "mixed",
       "breadth_pct": 42.9,
       "anomalies_count": 0,
@@ -35,16 +35,16 @@
         {
           "lens": "labor",
           "group_a": "labor_sentiment",
-          "group_b": "unemployment",
-          "breadth_a": 1.0,
-          "breadth_b": 0.0,
-          "diff": 1.0,
-          "interpretation": "labor_sentiment е по-силна (100%) отколкото unemployment (0%) — разминаване +100%.",
-          "name_bg": "labor_sentiment vs unemployment",
-          "pair_id": "labor__labor_sentiment__vs__unemployment",
+          "group_b": "wages",
+          "breadth_a": 0.0,
+          "breadth_b": 1.0,
+          "diff": -1.0,
+          "interpretation": "wages е по-силна (100%) отколкото labor_sentiment (0%) — разминаване +100%.",
+          "name_bg": "labor_sentiment vs wages",
+          "pair_id": "labor__labor_sentiment__vs__wages",
           "slot_a_label": "labor_sentiment",
-          "slot_b_label": "unemployment",
-          "state": "a_up_b_down"
+          "slot_b_label": "wages",
+          "state": "a_down_b_up"
         },
         {
           "lens": "labor",
@@ -65,14 +65,14 @@
           "group_a": "employment",
           "group_b": "labor_sentiment",
           "breadth_a": 0.5,
-          "breadth_b": 1.0,
-          "diff": -0.5,
-          "interpretation": "labor_sentiment е по-силна (100%) отколкото employment (50%) — разминаване +50%.",
+          "breadth_b": 0.0,
+          "diff": 0.5,
+          "interpretation": "employment е по-силна (50%) отколкото labor_sentiment (0%) — разминаване +50%.",
           "name_bg": "employment vs labor_sentiment",
           "pair_id": "labor__employment__vs__labor_sentiment",
           "slot_a_label": "employment",
           "slot_b_label": "labor_sentiment",
-          "state": "a_down_b_up"
+          "state": "a_up_b_down"
         },
         {
           "lens": "labor",
@@ -105,13 +105,27 @@
       ]
     },
     "growth": {
-      "score": 42.2,
-      "health_z": -0.316,
+      "score": 44.2,
+      "health_z": -0.234,
       "direction": "mixed",
       "breadth_pct": 25.0,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": [
+        {
+          "lens": "growth",
+          "group_a": "country_leading",
+          "group_b": "sentiment",
+          "breadth_a": 1.0,
+          "breadth_b": 0.444,
+          "diff": 0.556,
+          "interpretation": "country_leading е по-силна (100%) отколкото sentiment (44%) — разминаване +56%.",
+          "name_bg": "country_leading vs sentiment",
+          "pair_id": "growth__country_leading__vs__sentiment",
+          "slot_a_label": "country_leading",
+          "slot_b_label": "sentiment",
+          "state": "a_up_b_down"
+        },
         {
           "lens": "growth",
           "group_a": "country_leading",
@@ -129,32 +143,17 @@
       ]
     },
     "inflation": {
-      "score": 49.6,
-      "health_z": -0.016,
+      "score": 44.3,
+      "health_z": -0.228,
       "direction": "mixed",
       "breadth_pct": 42.9,
       "anomalies_count": 0,
       "new_extreme_count": 0,
-      "intra_divergences": [
-        {
-          "lens": "inflation",
-          "group_a": "core_measures",
-          "group_b": "headline_measures",
-          "breadth_a": 0.0,
-          "breadth_b": 0.667,
-          "diff": -0.667,
-          "interpretation": "headline_measures е по-силна (67%) отколкото core_measures (0%) — разминаване +67%.",
-          "name_bg": "core_measures vs headline_measures",
-          "pair_id": "inflation__core_measures__vs__headline_measures",
-          "slot_a_label": "core_measures",
-          "slot_b_label": "headline_measures",
-          "state": "a_down_b_up"
-        }
-      ]
+      "intra_divergences": []
     },
     "credit": {
-      "score": 44.0,
-      "health_z": -0.243,
+      "score": 44.5,
+      "health_z": -0.222,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -219,28 +218,13 @@
       ]
     },
     "external": {
-      "score": 38.6,
-      "health_z": -0.465,
-      "direction": "mixed",
+      "score": 37.2,
+      "health_z": -0.525,
+      "direction": "contracting",
       "breadth_pct": 16.7,
       "anomalies_count": 0,
       "new_extreme_count": 0,
-      "intra_divergences": [
-        {
-          "lens": "external",
-          "group_a": "external_balance",
-          "group_b": "input_costs",
-          "breadth_a": 1.0,
-          "breadth_b": 0.333,
-          "diff": 0.667,
-          "interpretation": "external_balance е по-силна (100%) отколкото input_costs (33%) — разминаване +67%.",
-          "name_bg": "external_balance vs input_costs",
-          "pair_id": "external__external_balance__vs__input_costs",
-          "slot_a_label": "external_balance",
-          "slot_b_label": "input_costs",
-          "state": "a_up_b_down"
-        }
-      ]
+      "intra_divergences": []
     }
   },
   "top_anomalies": [
@@ -251,10 +235,10 @@
         "credit"
       ],
       "peer_group": "sovereign_yields",
-      "z_score": 5.28,
+      "z_score": 5.596,
       "direction": "up",
-      "current_value": 2.924,
-      "last_date": "2026-08-01",
+      "current_value": 3.3011,
+      "last_date": "2026-09-01",
       "is_new_extreme": false,
       "new_extreme_direction": null,
       "narrative_hint": "EA-aggregate 2Y yield. Curve slope (10Y-2Y) проксира policy expectations и recession risk."
@@ -295,15 +279,15 @@
       "pair_id": "stagflation_test",
       "name_bg": "Стагфлационен тест",
       "question_bg": "Заплатите ли движат услугите нагоре?",
-      "state": "both_down",
-      "interpretation": "Дезинфлация broad-based: и заплати, и базова отстъпват. ЕЦБ има пространство за политика.",
+      "state": "a_down_b_up",
+      "interpretation": "Sticky services без wage support — не sustainable. Очаквай корекция надолу в core.",
       "slot_a_label": "Натиск от заплати",
       "slot_b_label": "Базова/услуги инфлация",
       "breadth_a": 0.0,
-      "breadth_b": 0.0,
-      "state_raw": "a_up_b_down",
+      "breadth_b": 1.0,
+      "state_raw": "both_up",
       "breadth_a_raw": 1.0,
-      "breadth_b_raw": 0.0
+      "breadth_b_raw": 1.0
     },
     {
       "pair_id": "ecb_transmission",
@@ -341,10 +325,10 @@
       "interpretation": "Insufficient data в една от двете групи.",
       "slot_a_label": "Реализирана headline инфлация",
       "slot_b_label": "SPF дългосрочни очаквания",
-      "breadth_a": 0.667,
+      "breadth_a": 1.0,
       "breadth_b": null,
       "state_raw": "insufficient_data",
-      "breadth_a_raw": 0.667,
+      "breadth_a_raw": 1.0,
       "breadth_b_raw": null
     },
     {
@@ -356,10 +340,10 @@
       "slot_a_label": "PPI междинни стоки",
       "slot_b_label": "Core инфлация (HICP)",
       "breadth_a": null,
-      "breadth_b": 0.0,
+      "breadth_b": 1.0,
       "state_raw": "insufficient_data",
       "breadth_a_raw": null,
-      "breadth_b_raw": 0.0
+      "breadth_b_raw": 1.0
     },
     {
       "pair_id": "sentiment_vs_hard_data",
@@ -369,10 +353,10 @@
       "interpretation": "Sentiment turn обикновено leads hard data 3-6mo.",
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
-      "breadth_a": 0.778,
+      "breadth_a": 0.444,
       "breadth_b": 0.5,
       "state_raw": "transition",
-      "breadth_a_raw": 0.778,
+      "breadth_a_raw": 0.444,
       "breadth_b_raw": 0.5
     },
     {
