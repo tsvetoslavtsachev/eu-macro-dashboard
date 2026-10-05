@@ -9,7 +9,7 @@ Mirror на US версията — виж us-macro-dashboard/sources/bloomberg_
 Catalog usage:
     "EA_INFL_SWAP_5Y": {
         "source": "bloomberg_bridge",
-        "parquet_path": "../../../vrm-data-archive/parquet/EA_INFL_SWAP_5Y.parquet",
+        "parquet_path": "../../../markets/vrm-data-archive/parquet/EA_INFL_SWAP_5Y.parquet",
         "license_class": "bloomberg_internal_use",
         ...
     }

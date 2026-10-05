@@ -1137,7 +1137,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "EA_INFL_SWAP_1Y": {
         "source": "bloomberg_bridge",
         "id": "EA_INFL_SWAP_1Y",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_INFL_SWAP_1Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/EA_INFL_SWAP_1Y.parquet",
         "license_class": "derived_only",
         "region": "EA",
         "name_bg": "EA inflation swap 1Y (HICP-linked)",
@@ -1156,7 +1156,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "EA_INFL_SWAP_2Y": {
         "source": "bloomberg_bridge",
         "id": "EA_INFL_SWAP_2Y",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_INFL_SWAP_2Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/EA_INFL_SWAP_2Y.parquet",
         "license_class": "derived_only",
         "region": "EA",
         "name_bg": "EA inflation swap 2Y (HICP-linked)",
@@ -1175,7 +1175,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "EA_INFL_SWAP_5Y": {
         "source": "bloomberg_bridge",
         "id": "EA_INFL_SWAP_5Y",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_INFL_SWAP_5Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/EA_INFL_SWAP_5Y.parquet",
         "license_class": "derived_only",
         "region": "EA",
         "name_bg": "EA inflation swap 5Y (HICP-linked)",
@@ -1194,7 +1194,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "EA_INFL_SWAP_5Y5Y_FWD": {
         "source": "bloomberg_bridge",
         "id": "EA_INFL_SWAP_5Y5Y_FWD",
-        "parquet_path": "../../vrm-data-archive/parquet/EA_INFL_SWAP_5Y5Y_FWD.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/EA_INFL_SWAP_5Y5Y_FWD.parquet",
         "license_class": "derived_only",
         "region": "EA",
         "name_bg": "EA inflation swap 5y5y forward (ECB's preferred LT measure)",
@@ -1221,7 +1221,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "DE_CDS_5Y": {
         "source": "bloomberg_bridge",
         "id": "DE_CDS_5Y",
-        "parquet_path": "../../vrm-data-archive/parquet/DE_CDS_5Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/DE_CDS_5Y.parquet",
         "license_class": "derived_only",
         "region": "DE",
         "name_bg": "Germany 5Y sovereign CDS (senior)",
@@ -1240,7 +1240,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "IT_CDS_5Y": {
         "source": "bloomberg_bridge",
         "id": "IT_CDS_5Y",
-        "parquet_path": "../../vrm-data-archive/parquet/IT_CDS_5Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/IT_CDS_5Y.parquet",
         "license_class": "derived_only",
         "region": "IT",
         "name_bg": "Italy 5Y sovereign CDS (senior)",
@@ -1259,7 +1259,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "ES_CDS_5Y": {
         "source": "bloomberg_bridge",
         "id": "ES_CDS_5Y",
-        "parquet_path": "../../vrm-data-archive/parquet/ES_CDS_5Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/ES_CDS_5Y.parquet",
         "license_class": "derived_only",
         "region": "ES",
         "name_bg": "Spain 5Y sovereign CDS (senior)",
@@ -1278,7 +1278,7 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     "FR_CDS_5Y": {
         "source": "bloomberg_bridge",
         "id": "FR_CDS_5Y",
-        "parquet_path": "../../vrm-data-archive/parquet/FR_CDS_5Y.parquet",
+        "parquet_path": "../../markets/vrm-data-archive/parquet/FR_CDS_5Y.parquet",
         "license_class": "derived_only",
         "region": "FR",
         "name_bg": "France 5Y sovereign CDS (senior)",
