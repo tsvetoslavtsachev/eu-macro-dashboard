@@ -20,7 +20,7 @@
 | 5. Research Desk | ✅ | Journal layer (CRUD + filter) + sandbox scaffolding |
 | 6. Package | ✅ | FRAMEWORK.md, AGENT.md, PHASES.md, run.bat, tag v0.1.0 |
 
-139 теста минават · 30 серии fetch-ват чисто end-to-end.
+323 теста минават · 58 серии от ECB · Eurostat · OECD · NBB fetch-ват чисто end-to-end (20.11.2026).
 
 ---
 
@@ -45,7 +45,7 @@ git clone https://github.com/tsvetoslavtsachev/eu-macro-dashboard.git
 cd eu-macro-dashboard
 pip install -r requirements.txt
 
-# Първо стартиране — fetch всички 16 серии
+# Първо стартиране — fetch всички серии
 python run.py --status --refresh
 
 # Седмичен briefing (бърз, само от cache)
@@ -57,6 +57,8 @@ python run.py --briefing --with-analogs --with-journal
 # По-подробни режими
 python run.py --status         # cache status report
 ```
+
+**Кешът е локален.** `data/*_cache.json` са в `.gitignore`: `git pull` носи комитнатия `output/api/` от Actions, но НЕ кешовете. Локалното копие се опреснява само когато `run.py` се пусне тук (`--status --refresh` или briefing). Без това застива тихо (08.10.2026: кешовете стояха от 05–18.06). Затова от 09.10.2026 задача в Windows пуска `refresh_local.ps1` всеки понеделник (лог: `output/logs/refresh_local.log`), а `python run.py --check-fresh` казва дали кешът е по-стар от 14 дни.
 
 **API ключове:** ECB SDW и Eurostat REST не изискват автентикация. `.env` файлът е опционален, само за override на endpoint-и.
 
@@ -96,7 +98,7 @@ eu_macro_dashboard/
 │   ├── _template.md
 │   ├── HOWTO.md
 │   └── {labor,inflation,credit,growth,analogs,regime,methodology}/
-├── tests/                # 134 pytest теста
+├── tests/                # 323 pytest теста
 ├── FRAMEWORK.md          # методология
 ├── AGENT.md              # orientation за AI assistents в бъдещи сесии
 ├── PHASES.md             # build log на 6-те phase-а
