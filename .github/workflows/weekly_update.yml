@@ -48,7 +48,9 @@ jobs:
       - name: Restore data cache
         uses: actions/cache@v4
         with:
-          path: data/cache_*.json
+          # Файловете са data/<източник>_cache.json. Старият шаблон
+          # data/cache_*.json не хващаше нищо и кешът не се записваше (ЕВРО1, 09.10.2026).
+          path: data/*_cache.json
           key: ${{ steps.cache-key.outputs.key }}
           restore-keys: |
             eu-macro-cache-
@@ -61,8 +63,10 @@ jobs:
       - name: Комитнатият мост бие кеша
         run: git checkout -- data/bloomberg_bridge.json
 
-      - name: Smart refresh stale series
-        run: python run.py --refresh-only
+      # Принудително: с жив кеш умният режим би пропуснал месечни серии до 10 дни
+      # (TTL) и свежият HICP би закъснял със седмица. Кешът е само резерва, ако API падне.
+      - name: Force refresh all series (cache = fallback)
+        run: python run.py --refresh-only --refresh
 
       - name: Generate HTML briefing
         # --with-analogs: Historical Analog Engine секция в deep-а (строи се от наличния
