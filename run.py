@@ -351,6 +351,8 @@ def main() -> int:
                         help="Force-fetch всички серии преди генериране")
     parser.add_argument("--no-browser", action="store_true",
                         help="Не отваря HTML в браузър")
+    parser.add_argument("--check-fresh", action="store_true",
+                        help="Проверка за застинал локален кеш; exit 1, ако е над 14 дни")
     args = parser.parse_args()
 
     print("\n" + "═" * 60)
@@ -360,6 +362,14 @@ def main() -> int:
     print(f"  ECB:      {ECB_API_BASE}")
     print(f"  Eurostat: {EUROSTAT_API_BASE}")
     print("═" * 60 + "\n")
+
+    from export.cache_age import stale_caches, format_warning
+    stale = stale_caches(BASE_DIR / "data")
+    if args.check_fresh:
+        print(format_warning(stale) or "✓ Локалният кеш е пресен (до 14 дни).")
+        return 1 if stale else 0
+    if stale and not (args.refresh or args.refresh_only):
+        print(format_warning(stale) + "\n")
 
     if args.status:
         return cmd_status(args)
