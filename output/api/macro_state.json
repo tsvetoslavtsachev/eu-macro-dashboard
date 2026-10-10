@@ -1,10 +1,10 @@
 {
   "region": "EA",
-  "as_of_date": "2026-10-03",
-  "generated_at": "2026-10-03T08:36:03.359444Z",
+  "as_of_date": "2026-10-10",
+  "generated_at": "2026-10-10T08:58:34.337160Z",
   "executive_summary": {
     "regime_key": "policy_dilemma",
-    "regime_label_bg": "Policy dilemma (индикирана)",
+    "regime_label_bg": "Policy dilemma",
     "css_class": "regime-dilem",
     "narrative": "Policy dilemma — labor market е loose, но инфлацията remains hot. ЕЦБ е заклещена между инфлацията и растежа. Най-отклонена леща: Инфлация и цени — breadth 100% (разширяване), 0 аномалии, 0 нови екстремума. За наблюдение следващия релиз: FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
@@ -13,7 +13,7 @@
       "Активни двойки: Stagflation test=a_down_b_up; fragmentation_risk=a_up_b_down"
     ],
     "primary_driver": "stagflation_test",
-    "regime_confidence": "indicated",
+    "regime_confidence": "confirmed",
     "stale_excluded_count": 5,
     "stale_excluded_keys": [
       "EA_EXPORT_VOLUME",
@@ -105,8 +105,8 @@
       ]
     },
     "growth": {
-      "score": 44.2,
-      "health_z": -0.234,
+      "score": 45.3,
+      "health_z": -0.189,
       "direction": "mixed",
       "breadth_pct": 25.0,
       "anomalies_count": 0,
@@ -125,26 +125,12 @@
           "slot_a_label": "country_leading",
           "slot_b_label": "sentiment",
           "state": "a_up_b_down"
-        },
-        {
-          "lens": "growth",
-          "group_a": "country_leading",
-          "group_b": "hard_activity",
-          "breadth_a": 1.0,
-          "breadth_b": 0.5,
-          "diff": 0.5,
-          "interpretation": "country_leading е по-силна (100%) отколкото hard_activity (50%) — разминаване +50%.",
-          "name_bg": "country_leading vs hard_activity",
-          "pair_id": "growth__country_leading__vs__hard_activity",
-          "slot_a_label": "country_leading",
-          "slot_b_label": "hard_activity",
-          "state": "a_up_b_down"
         }
       ]
     },
     "inflation": {
-      "score": 44.3,
-      "health_z": -0.228,
+      "score": 43.4,
+      "health_z": -0.267,
       "direction": "mixed",
       "breadth_pct": 42.9,
       "anomalies_count": 0,
@@ -152,8 +138,8 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 44.5,
-      "health_z": -0.222,
+      "score": 44.2,
+      "health_z": -0.235,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 3,
@@ -218,10 +204,10 @@
       ]
     },
     "external": {
-      "score": 37.2,
-      "health_z": -0.525,
-      "direction": "contracting",
-      "breadth_pct": 16.7,
+      "score": 61.6,
+      "health_z": 0.473,
+      "direction": "mixed",
+      "breadth_pct": 33.3,
       "anomalies_count": 0,
       "new_extreme_count": 0,
       "intra_divergences": []
@@ -237,7 +223,7 @@
       "peer_group": "sovereign_yields",
       "z_score": 5.596,
       "direction": "up",
-      "current_value": 3.3011,
+      "current_value": 3.3012,
       "last_date": "2026-09-01",
       "is_new_extreme": false,
       "new_extreme_direction": null,
@@ -354,10 +340,10 @@
       "slot_a_label": "Sentiment (ESI, confidence)",
       "slot_b_label": "Hard activity (IP, retail, GDP)",
       "breadth_a": 0.444,
-      "breadth_b": 0.5,
+      "breadth_b": 0.75,
       "state_raw": "transition",
       "breadth_a_raw": 0.444,
-      "breadth_b_raw": 0.5
+      "breadth_b_raw": 0.75
     },
     {
       "pair_id": "growth_labor_lead_lag",
@@ -367,10 +353,10 @@
       "interpretation": "Смесена картина — изчакай alignment на двата блока.",
       "slot_a_label": "Твърда активност (IP, retail, GDP)",
       "slot_b_label": "Пазар на труда (сила)",
-      "breadth_a": 0.5,
+      "breadth_a": 0.75,
       "breadth_b": 0.5,
-      "state_raw": "transition",
-      "breadth_a_raw": 0.5,
+      "state_raw": "both_up",
+      "breadth_a_raw": 0.75,
       "breadth_b_raw": 0.75
     }
   ],
