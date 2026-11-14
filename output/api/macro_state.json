@@ -1,36 +1,32 @@
 {
   "region": "EA",
-  "as_of_date": "2026-11-07",
-  "generated_at": "2026-11-07T09:14:00.344957Z",
+  "as_of_date": "2026-11-14",
+  "generated_at": "2026-11-14T09:24:39.488030Z",
   "executive_summary": {
-    "regime_key": "transition",
-    "regime_label_bg": "Преходно / смесено",
-    "css_class": "regime-trans",
-    "narrative": "Сигналите са в преход — няма доминираща конфигурация. Следващите 2-3 релиза ще ориентират посоката. Най-отклонена леща: Инфлация и цени — breadth 75% (смесено), 2 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_OAT_BUND_SPREAD, FR_10Y, DE_10Y (нови 5-годишни екстремуми).",
+    "regime_key": "slowdown",
+    "regime_label_bg": "Синхронно забавяне (индикирано)",
+    "css_class": "regime-slow",
+    "narrative": "Синхронно забавяне — hard activity и labor claims сочат в посока на отслабване. Late-cycle риск е активен. Най-отклонена леща: Инфлация и цени — breadth 75% (смесено), 2 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_OAT_BUND_SPREAD, FR_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
       "Най-силна аномалия: EA_BUND_2Y z=+5.21",
       "3 нови екстремуми в top-8 (lookback 5г.)",
-      "Активни двойки: Sentiment × Hard=both_down"
+      "Активни двойки: Sentiment × Hard=both_down; Growth × Labor=both_down"
     ],
-    "primary_driver": "none",
+    "primary_driver": "growth_labor_lead_lag",
     "regime_confidence": "indicated",
-    "stale_excluded_count": 5,
+    "stale_excluded_count": 1,
     "stale_excluded_keys": [
-      "EA_EXPORT_VOLUME",
-      "EA_EXP_UV",
-      "EA_IMP_UV",
-      "EA_PERMIT_DW",
-      "EA_TOT_MONTHLY"
+      "EA_PERMIT_DW"
     ]
   },
   "lenses": {
     "labor": {
-      "score": 38.7,
-      "health_z": -0.459,
+      "score": 38.3,
+      "health_z": -0.475,
       "direction": "mixed",
       "breadth_pct": 42.9,
       "anomalies_count": 1,
-      "new_extreme_count": 0,
+      "new_extreme_count": 1,
       "intra_divergences": [
         {
           "lens": "labor",
@@ -77,10 +73,10 @@
       ]
     },
     "growth": {
-      "score": 46.2,
-      "health_z": -0.154,
+      "score": 46.7,
+      "health_z": -0.131,
       "direction": "mixed",
-      "breadth_pct": 16.7,
+      "breadth_pct": 25.0,
       "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": [
@@ -139,12 +135,12 @@
       ]
     },
     "credit": {
-      "score": 43.8,
-      "health_z": -0.25,
+      "score": 39.4,
+      "health_z": -0.429,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 4,
-      "new_extreme_count": 3,
+      "new_extreme_count": 2,
       "intra_divergences": [
         {
           "lens": "credit",
@@ -162,20 +158,6 @@
         },
         {
           "lens": "credit",
-          "group_a": "bank_lending",
-          "group_b": "sovereign_yields",
-          "breadth_a": 0.5,
-          "breadth_b": 1.0,
-          "diff": -0.5,
-          "interpretation": "sovereign_yields е по-силна (100%) отколкото bank_lending (50%) — разминаване +50%.",
-          "name_bg": "bank_lending vs sovereign_yields",
-          "pair_id": "credit__bank_lending__vs__sovereign_yields",
-          "slot_a_label": "bank_lending",
-          "slot_b_label": "sovereign_yields",
-          "state": "a_down_b_up"
-        },
-        {
-          "lens": "credit",
           "group_a": "policy_stance",
           "group_b": "sovereign_spreads",
           "breadth_a": 0.5,
@@ -187,28 +169,14 @@
           "slot_a_label": "policy_stance",
           "slot_b_label": "sovereign_spreads",
           "state": "a_down_b_up"
-        },
-        {
-          "lens": "credit",
-          "group_a": "policy_stance",
-          "group_b": "sovereign_yields",
-          "breadth_a": 0.5,
-          "breadth_b": 1.0,
-          "diff": -0.5,
-          "interpretation": "sovereign_yields е по-силна (100%) отколкото policy_stance (50%) — разминаване +50%.",
-          "name_bg": "policy_stance vs sovereign_yields",
-          "pair_id": "credit__policy_stance__vs__sovereign_yields",
-          "slot_a_label": "policy_stance",
-          "slot_b_label": "sovereign_yields",
-          "state": "a_down_b_up"
         }
       ]
     },
     "external": {
-      "score": 70.6,
-      "health_z": 0.878,
+      "score": 64.1,
+      "health_z": 0.581,
       "direction": "expanding",
-      "breadth_pct": 50.0,
+      "breadth_pct": 62.5,
       "anomalies_count": 1,
       "new_extreme_count": 0,
       "intra_divergences": [
@@ -225,6 +193,20 @@
           "slot_a_label": "external_balance",
           "slot_b_label": "input_costs",
           "state": "a_down_b_up"
+        },
+        {
+          "lens": "external",
+          "group_a": "input_costs",
+          "group_b": "processing",
+          "breadth_a": 1.0,
+          "breadth_b": 0.0,
+          "diff": 1.0,
+          "interpretation": "input_costs е по-силна (100%) отколкото processing (0%) — разминаване +100%.",
+          "name_bg": "input_costs vs processing",
+          "pair_id": "external__input_costs__vs__processing",
+          "slot_a_label": "input_costs",
+          "slot_b_label": "processing",
+          "state": "a_up_b_down"
         }
       ]
     }
@@ -252,10 +234,10 @@
         "credit"
       ],
       "peer_group": "sovereign_spreads",
-      "z_score": 2.48,
+      "z_score": 5.173,
       "direction": "up",
-      "current_value": 0.967,
-      "last_date": "2026-09-01",
+      "current_value": 1.474,
+      "last_date": "2026-10-01",
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "Core-but-not-DE EA stress proxy. Captures France-specific stress (e.g., 2024 budget crisis)."
@@ -267,13 +249,28 @@
         "credit"
       ],
       "peer_group": "sovereign_yields",
-      "z_score": 2.453,
+      "z_score": 2.698,
       "direction": "up",
-      "current_value": 4.44,
-      "last_date": "2026-09-01",
+      "current_value": 4.89,
+      "last_date": "2026-10-01",
       "is_new_extreme": true,
       "new_extreme_direction": "max",
       "narrative_hint": "France sovereign yield — компонент на OAT-Bund spread. Core-but-not-DE EA stress indicator."
+    },
+    {
+      "series_id": "EA_TRADE_BALANCE",
+      "name_bg": "Търговски баланс (стоки, извън-ЕА, M€, SCA)",
+      "lens": [
+        "external"
+      ],
+      "peer_group": "external_balance",
+      "z_score": -2.322,
+      "direction": "down",
+      "current_value": -8677.6,
+      "last_date": "2026-09-01",
+      "is_new_extreme": false,
+      "new_extreme_direction": null,
+      "narrative_hint": "Стоковият баланс с третите страни. Срив към дефицит (2022) = енергийната сметка изпреварва износа. Полярност +1."
     },
     {
       "series_id": "EA_SELLING_PRICE_EXP",
@@ -290,36 +287,6 @@
       "is_new_extreme": false,
       "new_extreme_direction": null,
       "narrative_hint": "Forward-looking inflation сигнал от business side — мениджърите казват дали ще вдигат цени. Изпреварва HICP с 3-6 месеца."
-    },
-    {
-      "series_id": "DE_10Y",
-      "name_bg": "Germany 10Y Bund yield (Maastricht measure)",
-      "lens": [
-        "credit"
-      ],
-      "peer_group": "sovereign_yields",
-      "z_score": 2.248,
-      "direction": "up",
-      "current_value": 3.473,
-      "last_date": "2026-09-01",
-      "is_new_extreme": true,
-      "new_extreme_direction": "max",
-      "narrative_hint": "Germany 10Y, Maastricht-criterion measure. Reference за BTP-Bund / OAT-Bund spread изчисления."
-    },
-    {
-      "series_id": "EA_TRADE_BALANCE",
-      "name_bg": "Търговски баланс (стоки, извън-ЕА, M€, SCA)",
-      "lens": [
-        "external"
-      ],
-      "peer_group": "external_balance",
-      "z_score": -2.18,
-      "direction": "down",
-      "current_value": -6826.6,
-      "last_date": "2026-08-01",
-      "is_new_extreme": false,
-      "new_extreme_direction": null,
-      "narrative_hint": "Стоковият баланс с третите страни. Срив към дефицит (2022) = енергийната сметка изпреварва износа. Полярност +1."
     },
     {
       "series_id": "EA_HICP_ENERGY",
@@ -343,13 +310,28 @@
         "labor"
       ],
       "peer_group": "employment",
-      "z_score": -2.013,
+      "z_score": -2.144,
       "direction": "down",
-      "current_value": 0.5174,
-      "last_date": "2026-04-01",
+      "current_value": 0.3654,
+      "last_date": "2026-07-01",
+      "is_new_extreme": true,
+      "new_extreme_direction": "min",
+      "narrative_hint": "Домашна концепция за заетост (брой наети) от тримесечните нац. сметки. Допълва employment RATE (EA_LFS_EMP) с обемен сигнал — същата полярност. De-singleton-ва employment."
+    },
+    {
+      "series_id": "DE_10Y",
+      "name_bg": "Germany 10Y Bund yield (Maastricht measure)",
+      "lens": [
+        "credit"
+      ],
+      "peer_group": "sovereign_yields",
+      "z_score": 2.056,
+      "direction": "up",
+      "current_value": 3.416,
+      "last_date": "2026-10-01",
       "is_new_extreme": false,
       "new_extreme_direction": null,
-      "narrative_hint": "Домашна концепция за заетост (брой наети) от тримесечните нац. сметки. Допълва employment RATE (EA_LFS_EMP) с обемен сигнал — същата полярност. De-singleton-ва employment."
+      "narrative_hint": "Germany 10Y, Maastricht-criterion measure. Reference за BTP-Bund / OAT-Bund spread изчисления."
     }
   ],
   "cross_lens_divergences": [
@@ -441,12 +423,12 @@
       "pair_id": "growth_labor_lead_lag",
       "name_bg": "Растеж срещу труд (lead-lag)",
       "question_bg": "Активността и пазарът на труда движат ли се заедно?",
-      "state": "transition",
-      "interpretation": "Смесена картина — изчакай alignment на двата блока.",
+      "state": "both_down",
+      "interpretation": "Синхронно забавяне: активността и трудът отслабват заедно. Late-cycle — гледай дали инфлацията позволява отговор на ЕЦБ.",
       "slot_a_label": "Твърда активност (IP, retail, GDP)",
       "slot_b_label": "Пазар на труда (сила)",
       "breadth_a": 0.25,
-      "breadth_b": 0.5,
+      "breadth_b": 0.25,
       "state_raw": "transition",
       "breadth_a_raw": 0.5,
       "breadth_b_raw": 0.5
