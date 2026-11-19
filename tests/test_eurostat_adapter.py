@@ -128,6 +128,65 @@ def test_parse_jsonstat_with_offset_indexes():
     assert s.index[0] == pd.Timestamp("2000-01-01")
 
 
+def _jsonstat_multi(dims: list[tuple[str, list[str]]], values: dict[int, float]) -> dict:
+    """JSON-stat с произволни дименсии; dims = [(id, [category codes]), ...], time включен.
+
+    Редът на `values` се пази в `value` (тестваме зависимост от реда на ключовете).
+    """
+    return {
+        "version": "2.0",
+        "class": "dataset",
+        "id": [d for d, _ in dims],
+        "size": [len(codes) for _, codes in dims],
+        "value": {str(k): v for k, v in values.items()},
+        "dimension": {
+            d: {"category": {"index": {c: i for i, c in enumerate(codes)}}}
+            for d, codes in dims
+        },
+    }
+
+
+_CPA3 = [("cpa2_1", ["A0", "A1", "A2"]), ("time", ["2024-01", "2024-02"])]
+# flat = cpa · 2 + t
+_CPA3_VALUES = {0: 10.0, 1: 11.0, 2: 20.0, 3: 21.0, 4: 30.0, 5: 31.0}
+
+
+@pytest.mark.parametrize("order", [
+    [0, 1, 2, 3, 4, 5],   # възходящ
+    [4, 5, 0, 1, 2, 3],   # чужда категория първа
+    [0, 1, 4, 5, 2, 3],   # чужда категория последна (EA_PERMIT_DW, 11.2026)
+])
+def test_parse_jsonstat_multi_category_takes_first_only(order, caplog):
+    """Non-singular dim → само категория 0, независимо от реда на ключовете."""
+    payload = _jsonstat_multi(_CPA3, {k: _CPA3_VALUES[k] for k in order})
+    with caplog.at_level("WARNING"):
+        s = parse_jsonstat(payload)
+    assert s.tolist() == [10.0, 11.0]
+    assert "cpa2_1=A0" in caplog.text
+
+
+def test_parse_jsonstat_empty_first_category_does_not_borrow_others():
+    """Празна категория 0 → празна серия (fetch я брои за failure), не чужди данни."""
+    payload = _jsonstat_multi(_CPA3, {k: v for k, v in _CPA3_VALUES.items() if k >= 2})
+    assert parse_jsonstat(payload).empty
+
+
+def test_parse_jsonstat_time_not_last_dimension():
+    dims = [("geo", ["EA"]), ("time", ["2024-01", "2024-02"]), ("unit", ["I21", "PCH"])]
+    # flat = t · 2 + unit
+    payload = _jsonstat_multi(dims, {3: 9.0, 1: 9.0, 0: 1.0, 2: 2.0})
+    s = parse_jsonstat(payload)
+    assert s.tolist() == [1.0, 2.0]
+    assert s.index[1] == pd.Timestamp("2024-02-01")
+
+
+def test_parse_jsonstat_size_id_mismatch_raises():
+    payload = _jsonstat(periods=["2024-01"], values={0: 1.0})
+    payload["size"] = payload["size"][:-1]
+    with pytest.raises(ValueError, match="size"):
+        parse_jsonstat(payload)
+
+
 # ── Adapter HTTP behavior ──────────────────────────────────────
 
 def _mock_response(status_code: int = 200, json_data: dict | None = None, text: str = "") -> MagicMock:

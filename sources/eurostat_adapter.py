@@ -107,13 +107,26 @@ def parse_eurostat_period(period: str) -> Optional[pd.Timestamp]:
 # JSON-stat 2.0 parser
 # ============================================================
 
+def _first_category_code(dim_meta: Optional[dict]) -> str:
+    """Кодът на категорията с index 0 (за warning-а); "#0" ако няма metadata."""
+    index = ((dim_meta or {}).get("category") or {}).get("index")
+    if isinstance(index, dict):
+        for code, pos in index.items():
+            if pos == 0:
+                return str(code)
+    elif isinstance(index, list) and index:
+        return str(index[0])
+    return "#0"
+
+
 def parse_jsonstat(payload: dict) -> pd.Series:
     """Парсва Eurostat JSON-stat 2.0 → pd.Series (time-indexed).
 
     Очакваме single time series (всички non-time dimensions filter-нати към
-    single value). Ако payload-ът съдържа multi-cell, взимаме секцията
-    индексирана по time dimension и хвърляме warning ако има множествени
-    стойности за non-time dimension.
+    single value). Ако някоя non-time dimension има няколко категории, взимаме
+    САМО първата (index 0) и логваме warning с избрания код. Никога не смесваме
+    категории: flat index-ът се декодира row-major по `size`, независимо от
+    реда на ключовете във `value` и от позицията на time.
 
     Format:
       {
@@ -132,16 +145,23 @@ def parse_jsonstat(payload: dict) -> pd.Series:
 
     time_idx = dim_ids.index("time")
     sizes = payload.get("size") or []
+    if len(sizes) != len(dim_ids):
+        raise ValueError(
+            f"Eurostat response: size ({len(sizes)}) не съвпада с id ({len(dim_ids)})"
+        )
 
     # Проверяваме че всички non-time dimensions са с size=1 (filter-нати)
+    dimensions = payload.get("dimension") or {}
     multi_dims = [
         (dim_ids[i], sizes[i]) for i in range(len(dim_ids))
         if i != time_idx and sizes[i] > 1
     ]
     if multi_dims:
+        chosen = [f"{d}={_first_category_code(dimensions.get(d))}" for d, _ in multi_dims]
         logger.warning(
             f"Eurostat response има non-singular non-time dimensions: {multi_dims}. "
-            f"Catalog-ът трябва да добави filters за тези. Взимам първите indexes."
+            f"Catalog-ът трябва да добави filters за тези. Взимам само първата "
+            f"категория: {chosen}."
         )
 
     time_dim = (payload.get("dimension") or {}).get("time") or {}
@@ -156,14 +176,17 @@ def parse_jsonstat(payload: dict) -> pd.Series:
 
     values_dict = payload.get("value") or {}
 
-    # Computing the flat-index pattern: за single-value non-time dims,
-    # the flat index за time index `t` е just `t` (всички други indexes са 0).
-    # Това важи само ако time е last dimension (default за Eurostat).
-    if time_idx != len(dim_ids) - 1:
-        logger.warning(
-            f"Eurostat response: time dimension не е последната ({time_idx} vs {len(dim_ids)-1}). "
-            f"Parsing може да е неточен."
-        )
+    time_size = sizes[time_idx]
+    if time_size <= 0:
+        return pd.Series(dtype=float)
+
+    # Row-major flat index: flat = Σ idx_i · stride_i, stride_i = Π size_j (j > i).
+    # Когато всички non-time индекси са 0, flat = t · time_stride. Обратно:
+    # flat % time_stride == 0 ⇔ dims след time са на 0, а flat // time_stride
+    # < time_size ⇔ dims преди time са на 0. Всичко друго е чужда категория.
+    time_stride = 1
+    for s in sizes[time_idx + 1:]:
+        time_stride *= s
 
     data: dict[pd.Timestamp, float] = {}
     for flat_idx_str, value in values_dict.items():
@@ -171,13 +194,11 @@ def parse_jsonstat(payload: dict) -> pd.Series:
             flat_idx = int(flat_idx_str)
         except ValueError:
             continue
-        if value is None:
+        if value is None or flat_idx < 0 or flat_idx % time_stride:
             continue
-        # Time е последната dim → time_index = flat_idx % size_of_time
-        time_size = sizes[time_idx] if time_idx < len(sizes) else 0
-        if time_size <= 0:
+        time_index = flat_idx // time_stride
+        if time_index >= time_size:
             continue
-        time_index = flat_idx % time_size
         period = inverted.get(time_index)
         if not period:
             continue
