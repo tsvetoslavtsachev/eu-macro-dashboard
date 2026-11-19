@@ -433,7 +433,11 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
     },
     "EA_PERMIT_DW": {
         "source": "eurostat",
-        "id": "sts_cobp_m?geo=EA21&s_adj=SCA&unit=I21&indic_bt=BPRM_DW",
+        # cpa2_1 е задължителен: без него Eurostat връща 9 категории (данни само в 3)
+        # и parse_jsonstat ги слива по реда на ключовете в JSON-а. За BPRM_DW
+        # CPA_F41001 (всички жилищни) е празна; жилищният агрегат с данни е
+        # CPA_F41001_X_410014 (жилищни без общежития), проверено 19.11.2026.
+        "id": "sts_cobp_m?geo=EA21&s_adj=SCA&unit=I21&indic_bt=BPRM_DW&cpa2_1=CPA_F41001_X_410014",
         "region": "EA",
         "name_bg": "Разрешения за строеж (жилищни сгради, индекс 2021=100)",
         "name_en": "Building Permits — Dwellings (index 2021=100)",
