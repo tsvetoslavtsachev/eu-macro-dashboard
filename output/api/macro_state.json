@@ -1,10 +1,10 @@
 {
   "region": "EA",
-  "as_of_date": "2026-11-21",
-  "generated_at": "2026-11-21T10:11:57.875425Z",
+  "as_of_date": "2026-11-22",
+  "generated_at": "2026-11-22T20:34:00.348116Z",
   "executive_summary": {
     "regime_key": "policy_dilemma",
-    "regime_label_bg": "Policy dilemma (индикирана)",
+    "regime_label_bg": "Policy dilemma",
     "css_class": "regime-dilem",
     "narrative": "Policy dilemma — labor market е loose, но инфлацията remains hot. ЕЦБ е заклещена между инфлацията и растежа. Най-отклонена леща: Инфлация и цени — breadth 100% (разширяване), 2 аномалии, 0 нови екстремума. За наблюдение следващия релиз: EA_OAT_BUND_SPREAD, FR_10Y (нови 5-годишни екстремуми).",
     "supporting_signals": [
@@ -13,7 +13,7 @@
       "Активни двойки: Stagflation test=a_down_b_up; Sentiment × Hard=both_down; Growth × Labor=both_down"
     ],
     "primary_driver": "stagflation_test",
-    "regime_confidence": "indicated",
+    "regime_confidence": "confirmed",
     "stale_excluded_count": 1,
     "stale_excluded_keys": [
       "EA_PERMIT_DW"
