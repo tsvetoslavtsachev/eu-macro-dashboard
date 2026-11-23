@@ -1,7 +1,7 @@
 {
   "region": "EA",
   "as_of_date": "2026-11-23",
-  "generated_at": "2026-11-23T07:36:29.948034Z",
+  "generated_at": "2026-11-23T21:10:31.025797Z",
   "executive_summary": {
     "regime_key": "policy_dilemma",
     "regime_label_bg": "Policy dilemma",
@@ -120,8 +120,8 @@
       "intra_divergences": []
     },
     "credit": {
-      "score": 39.4,
-      "health_z": -0.431,
+      "score": 38.3,
+      "health_z": -0.477,
       "direction": "mixed",
       "breadth_pct": 36.8,
       "anomalies_count": 4,
