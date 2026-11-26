@@ -61,6 +61,7 @@ CHART_SERIES = {
         "EA_HICP_HEADLINE", "EA_HICP_CORE", "EA_HICP_SERVICES",
         "EA_HICP_ENERGY", "EA_HICP_FOOD", "EA_SPF_HICP_LT", "EA_PPI_INTERMEDIATE",
         "EA_SELLING_PRICE_EXP",
+        "EA_CONS_PRICE_EXP",  # ПРОЛЕТР4, ЕЗ-2
     ],
     "growth": [
         "EA_IP", "EA_RETAIL_VOL", "EA_BUILDING_PRODUCTION", "EA_PERMIT_DW",
@@ -85,6 +86,10 @@ CHART_SERIES = {
         "EA_TRADE_BALANCE", "EA_EXPORT_VOLUME", "EA_REER",
     ],
 }
+
+# ПРОЛЕТР4 (26.11.2026, ЕЗ-1): само за показване, извън LENSES
+CHART_SERIES["housing"] = ["EA_HPI_YOY"]
+CHART_SERIES["fiscal"] = ["EA_GOV_BALANCE", "EA_GOV_DEBT", "EA_GOV_INTEREST"]
 
 ALL_CHART_SERIES = {s for series_list in CHART_SERIES.values() for s in series_list}
 

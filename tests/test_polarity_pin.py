@@ -39,6 +39,11 @@ def _diff(actual: dict, expected: dict) -> dict:
 
 
 EXPECTED_POLARITY = {'DE_10Y': -1,
+ 'EA_CONS_PRICE_EXP': ('U', 'self'),
+ 'EA_HPI_YOY': 1,
+ 'EA_GOV_BALANCE': 1,
+ 'EA_GOV_DEBT': -1,
+ 'EA_GOV_INTEREST': -1,
  'DE_CDS_5Y': -1,
  'EA_BANK_LOANS_HH': 1,
  'EA_BANK_LOANS_NFC': 1,

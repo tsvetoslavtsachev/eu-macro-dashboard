@@ -25,7 +25,7 @@ from typing import Any, Optional
 import math
 import pandas as pd
 
-from catalog.series import SERIES_CATALOG, ALLOWED_LENSES
+from catalog.series import SERIES_CATALOG, ALLOWED_LENSES, SCORED_LENSES
 from catalog.cross_lens_pairs import CROSS_LENS_PAIRS
 
 
@@ -876,7 +876,7 @@ def generate_weekly_briefing(
 
     # Compute reports
     lens_reports = {}
-    for lens in ALLOWED_LENSES:
+    for lens in SCORED_LENSES:
         try:
             lens_reports[lens] = compute_lens_breadth(lens, augmented)
         except Exception:
