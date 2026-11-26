@@ -37,7 +37,7 @@ def test_catalog_validates_clean():
 
 def test_catalog_has_minimum_series_per_lens():
     """Всеки lens (5) трябва да има поне 1 серия в Phase 1."""
-    for lens in ALLOWED_LENSES:
+    for lens in ALLOWED_LENSES:  # и оценените, и тези само за показване
         series = series_by_lens(lens)
         assert len(series) >= 1, f"Lens '{lens}' has no series"
 

@@ -48,6 +48,12 @@ POLARITY: dict[str, Any] = {
     "EA_INFL_SWAP_2Y": ("U", "target", INFLATION_TARGET),
     "EA_INFL_SWAP_5Y": ("U", "target", INFLATION_TARGET),
     "EA_INFL_SWAP_5Y5Y_FWD": ("U", "target", INFLATION_TARGET),
+    # ПРОЛЕТР4 (26.11.2026): ЕЗ-2 в оценката; ЕЗ-1 само за показване. Посоките чакат потвърждение от Ц.
+    "EA_CONS_PRICE_EXP": ("U", "self"),  # баланс, не %; и свръх-, и недо-очакванията са необичайни
+    "EA_HPI_YOY": +1,                    # по-бърз ръст на цените = по-силен жилищен пазар
+    "EA_GOV_BALANCE": +1,                # по-малък дефицит = по-здраво
+    "EA_GOV_DEBT": -1,                   # по-висок дълг = по-зле
+    "EA_GOV_INTEREST": -1,               # повече лихви = по-зле
 
     # CREDIT / bank_lending
     "EA_BANK_LOANS_NFC": +1, "EA_BANK_LOANS_HH": +1,

@@ -69,7 +69,10 @@ ALLOWED_SOURCES = {"ecb", "eurostat", "oecd", "nbb", "derived", "pending", "bloo
 ALLOWED_REGIONS = {"EA", "EU", "DE", "FR", "IT", "ES", "PT", "GR", "BE", "GLOBAL"}
 # F-teardown 2026-06-05: "ecb" леща РАЗГЛОБЕНА → заменена с "external".
 # real_dfr+balance_sheet → credit; суровите DFR/MRO/MLF/ESTR → lens=[]; OIS изтрити.
-ALLOWED_LENSES = {"labor", "inflation", "growth", "credit", "external"}
+SCORED_LENSES = {"labor", "inflation", "growth", "credit", "external"}
+# ПРОЛЕТР4 (26.11.2026): лещи само за показване; без оценка, без режим, не палят светлините.
+DISPLAY_ONLY_LENSES = {"housing", "fiscal"}
+ALLOWED_LENSES = SCORED_LENSES | DISPLAY_ONLY_LENSES
 ALLOWED_TRANSFORMS = {"level", "yoy_pct", "mom_pct", "qoq_pct", "z_score", "first_diff"}
 # scoring_mode (опционално поле; липсва → "level"):
 #   "level"    — робастен z спрямо 10-г. плъзгаща норма (ниво-vs-норма; default)
@@ -1535,6 +1538,94 @@ SERIES_CATALOG: dict[str, dict[str, Any]] = {
         "revision_prone": True,
         "narrative_hint": "Цена за единица внос. Компонент за EA_TOT_MONTHLY "
                           "(expUV/impUV) — НЕ се скорира самостоятелно.",
+    },
+    # ── ПРОЛЕТР4 (26.11.2026, реш. Ц. „Да, приемам ги“) ────────────────────────────
+    # ЕЗ-2: в оценката на инфлацията, в празната дотогава група expectations.
+    "EA_CONS_PRICE_EXP": {
+        "source": "eurostat",
+        "id": "ei_bsco_m?geo=EA21&indic=BS-PT-NY&s_adj=SA&unit=BAL",
+        "region": "EA",
+        "name_bg": "Очаквания на потребителите за цените (12м напред, баланс)",
+        "name_en": "Consumer Price Expectations, next 12 months (balance)",
+        "lens": ["inflation"],
+        "peer_group": "expectations",
+        "tags": [],
+        "transform": "level",
+        "is_rate": False,
+        "historical_start": "1985-01-01",
+        "release_schedule": "monthly",
+        "typical_release": "end_month",
+        "revision_prone": False,
+        "narrative_hint": "Анкетата на ЕК при потребителите. Свободна смяна на инфлационните суапове от Bloomberg, които износът не зарежда. Баланс, не процент; посоката е U около собствената норма.",
+    },
+    # ЕЗ-1: само за показване; housing и fiscal са в DISPLAY_ONLY_LENSES, не в оценката.
+    "EA_HPI_YOY": {
+        "source": "eurostat",
+        "id": "prc_hpi_q?geo=EA21&purchase=TOTAL&unit=RCH_A",
+        "region": "EA",
+        "name_bg": "Цени на жилищата (г/г, %)",
+        "name_en": "House Price Index, annual rate of change",
+        "lens": ["housing"],
+        "peer_group": "housing_prices",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "2006-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "early_quarter_plus_one",
+        "revision_prone": True,
+        "narrative_hint": "Евростат HPI, около 100 дни след тримесечието. Ръстът на цените е по-силен пазар.",
+    },
+    "EA_GOV_BALANCE": {
+        "source": "eurostat",
+        "id": "gov_10q_ggnfa?geo=EA21&unit=PC_GDP&sector=S13&na_item=B9&s_adj=SCA",
+        "region": "EA",
+        "name_bg": "Салдо на сектор държавно управление (% от БВП)",
+        "name_en": "General Government Net Lending/Borrowing, % of GDP",
+        "lens": ["fiscal"],
+        "peer_group": "fiscal",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "2002-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "quarter_plus_four_months",
+        "revision_prone": True,
+        "narrative_hint": "Тримесечно, сезонно и календарно изгладено. По-малкият дефицит е по-здраво за дълга.",
+    },
+    "EA_GOV_DEBT": {
+        "source": "eurostat",
+        "id": "gov_10q_ggdebt?geo=EA21&unit=PC_GDP&sector=S13&na_item=GD",
+        "region": "EA",
+        "name_bg": "Дълг на сектор държавно управление (% от БВП)",
+        "name_en": "General Government Gross Debt, % of GDP",
+        "lens": ["fiscal"],
+        "peer_group": "fiscal",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "2000-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "quarter_plus_four_months",
+        "revision_prone": True,
+        "narrative_hint": "Маастрихтски дълг. По-високият дълг е по-зле.",
+    },
+    "EA_GOV_INTEREST": {
+        "source": "eurostat",
+        "id": "gov_10q_ggnfa?geo=EA21&unit=PC_GDP&sector=S13&na_item=D41PAY&s_adj=NSA",
+        "region": "EA",
+        "name_bg": "Лихвени плащания на държавата (% от БВП)",
+        "name_en": "General Government Interest Payable, % of GDP",
+        "lens": ["fiscal"],
+        "peer_group": "fiscal",
+        "tags": [],
+        "transform": "level",
+        "is_rate": True,
+        "historical_start": "2002-01-01",
+        "release_schedule": "quarterly",
+        "typical_release": "quarter_plus_four_months",
+        "revision_prone": True,
+        "narrative_hint": "Без сезонно изглаждане (Евростат не дава SCA). Повече лихви е по-зле за бюджета.",
     },
 }
 

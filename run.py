@@ -185,7 +185,7 @@ def cmd_export_context(args) -> int:
     from analysis.breadth import compute_lens_breadth
     from analysis.divergence import compute_cross_lens_divergence
     from analysis.anomaly import compute_anomalies
-    from catalog.series import ALLOWED_LENSES
+    from catalog.series import ALLOWED_LENSES, SCORED_LENSES
     from datetime import date
 
     adapters = build_adapters()
@@ -206,7 +206,7 @@ def cmd_export_context(args) -> int:
     print("🔬 Изчисляване на breadth / divergence / anomaly reports...")
 
     lens_reports = {}
-    for lens in sorted(ALLOWED_LENSES):
+    for lens in sorted(SCORED_LENSES):
         try:
             lens_reports[lens] = compute_lens_breadth(lens, augmented)
         except Exception as e:
